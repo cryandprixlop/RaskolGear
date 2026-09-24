@@ -161,7 +161,7 @@ public final class GearFactory {
                 case "boots" -> EquipmentSlotGroup.FEET;
                 default -> EquipmentSlotGroup.ARMOR;
             };
-            meta.addAttributeModifier(Attribute.MAX_HEALTH, new AttributeModifier(
+            meta.addAttributeModifier(Attribute.GENERIC_MAX_HEALTH, new AttributeModifier(
                     new NamespacedKey(plugin, "hp_" + slot), hp,
                     AttributeModifier.Operation.ADD_NUMBER, group));
         } catch (Throwable t) {
@@ -196,5 +196,9 @@ public final class GearFactory {
             case "boots" -> "сапоги";
             default -> slot;
         };
+    }
+
+    private static String color(String s) {
+        return ChatColor.translateAlternateColorCodes('&', s);
     }
 }
