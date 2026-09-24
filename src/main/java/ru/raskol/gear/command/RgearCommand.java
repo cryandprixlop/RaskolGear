@@ -20,6 +20,8 @@ public final class RgearCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SLOTS =
             Arrays.asList("helmet", "chestplate", "leggings", "boots", "set");
+    private static final List<String> RARITIES =
+            Arrays.asList("COMMON", "RARE", "EPIC", "LEGENDARY");
 
     private final RaskolGear plugin;
     private final GearFactory factory;
@@ -146,7 +148,7 @@ public final class RgearCommand implements CommandExecutor, TabCompleter {
             return filter(Arrays.asList("WARRIOR", "HUNTER", "PRIEST", "MAGE", "ROGUE"), args[3]);
         }
         if (args.length == 5 && args[0].equalsIgnoreCase("give")) {
-            return filter(Arrays.asList("COMMON", "RARE", "EPIC"), args[4]);
+            return filter(RARITIES, args[4]);
         }
         if (args.length == 6 && args[0].equalsIgnoreCase("give")
                 && args[2].equalsIgnoreCase("armor")) {
