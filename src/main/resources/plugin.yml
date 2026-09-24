@@ -3,8 +3,8 @@ version: ${project.version}
 main: ru.raskol.gear.RaskolGear
 api-version: '1.21'
 author: Baltimor
-description: Оружие и броня для классов с характеристиками и крафтом.
-softdepend: [Vault, RaskolClasses]
+description: Оружие и броня классов с характеристиками, критами и крафтом по чертежам.
+softdepend: [Vault, RaskolClasses, PlaceholderAPI]
 commands:
   rgear:
     description: Управление снаряжением
