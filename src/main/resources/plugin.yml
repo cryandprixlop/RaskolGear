@@ -1,0 +1,15 @@
+name: RaskolGear
+version: ${project.version}
+main: ru.raskol.gear.RaskolGear
+api-version: '1.21'
+author: Baltimor
+description: Оружие и броня для классов с характеристиками и крафтом.
+softdepend: [Vault, RaskolClasses]
+commands:
+  rgear:
+    description: Управление снаряжением
+    usage: /rgear help
+permissions:
+  raskolgear.admin:
+    description: Админ-команды снаряжения
+    default: op
