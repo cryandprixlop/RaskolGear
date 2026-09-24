@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Бой: класс-лок, урон base+Power*coeff, криты, проки эффектов. */
+/** Бой: класс-лок, урон (base+Power*coeff)*multiplier, криты, капы, проки. */
 public final class WeaponDamageListener implements Listener {
 
     private final RaskolGear plugin;
@@ -79,7 +79,12 @@ public final class WeaponDamageListener implements Listener {
         double coeff = pdc.getOrDefault(kPowerCoeff, PersistentDataType.DOUBLE, 0.0);
         String damageType = pdc.getOrDefault(kDamageType, PersistentDataType.STRING, "physical");
 
+        // Базовая формула: base + Power * coeff
         double finalDamage = base + power * coeff;
+
+        // ГЛОБАЛЬНЫЙ множитель урона (нерф/бафф всего оружия разом)
+        double multiplier = plugin.getConfig().getDouble("combat.damage-multiplier", 1.0);
+        finalDamage *= multiplier;
 
         // Крит: база класса (melee/spell по типу урона) + бонус оружия
         double critChance = classes.critBase(attacker, "physical".equals(damageType))
@@ -90,13 +95,26 @@ public final class WeaponDamageListener implements Listener {
             attacker.sendMessage("§6⚡ КРИТ! §e" + fmt(finalDamage) + " урона.");
         }
 
+        // Кап урона: не более max-single-hit за один удар
+        double maxHit = plugin.getConfig().getDouble("combat.max-single-hit", 300.0);
+        if (event.getEntity() instanceof Player) {
+            double maxPvp = plugin.getConfig().getDouble("combat.max-single-hit-pvp", 200.0);
+            maxHit = Math.min(maxHit, maxPvp);
+        }
+        if (finalDamage > maxHit) {
+            if (plugin.getConfig().getBoolean("combat.debug", false)) {
+                plugin.getLogger().info("[Gear] cap applied: " + fmt(finalDamage) + " -> " + fmt(maxHit));
+            }
+            finalDamage = maxHit;
+        }
+
         event.setDamage(finalDamage);
 
         if (plugin.getConfig().getBoolean("combat.debug", false)) {
             plugin.getLogger().info("[Gear] hit: " + attacker.getName()
                     + " weapon=" + weaponClass + " power=" + power
-                    + " base=" + base + " final=" + fmt(finalDamage)
-                    + (crit ? " CRIT" : ""));
+                    + " base=" + base + " multiplier=" + multiplier
+                    + " final=" + fmt(finalDamage) + (crit ? " CRIT" : ""));
         }
 
         // Прок эффекта
