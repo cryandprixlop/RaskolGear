@@ -1,0 +1,26 @@
+name: Build RaskolGear
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Build
+        run: mvn -B -ntp clean package
+      - name: Verify jar contents
+        run: |
+          ls -la target/
+          jar tf target/RaskolGear-1.0.0.jar | head -30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RaskolGear-jar
+          path: target/RaskolGear-*.jar
