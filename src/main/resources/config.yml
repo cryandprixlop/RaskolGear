@@ -1,0 +1,217 @@
+# ===== RaskolGear: оружие и броня классов =====
+
+# Множители редкости
+rarity:
+  COMMON:
+    color: "&f"
+    multiplier: 1.0
+  RARE:
+    color: "&9"
+    multiplier: 1.5
+  EPIC:
+    color: "&5"
+    multiplier: 2.5
+
+# Шансы крафта (сумма = 100)
+crafting:
+  fail-chance: 70.0
+  common-chance: 20.0
+  rare-chance: 8.0
+  epic-chance: 2.0
+
+# Оружие: 5 классов × 3 редкости = 15 сетов
+weapons:
+  WARRIOR:
+    COMMON:
+      material: IRON_SWORD
+      name: "Воинский меч"
+      damage-type: physical
+      base-damage: 12.0
+      power-coeff: 1.0
+      crit-bonus: 2.0
+      proc:
+        chance: 5.0
+        effect: "BLEED"
+        duration: 3
+    RARE:
+      material: DIAMOND_SWORD
+      name: "Стальной клинок"
+      damage-type: physical
+      base-damage: 18.0
+      power-coeff: 1.5
+      crit-bonus: 5.0
+      proc:
+        chance: 10.0
+        effect: "BLEED"
+        duration: 5
+    EPIC:
+      material: NETHERITE_SWORD
+      name: "Меч Раскола"
+      damage-type: physical
+      base-damage: 28.0
+      power-coeff: 2.5
+      crit-bonus: 10.0
+      proc:
+        chance: 20.0
+        effect: "STUN"
+        duration: 2
+
+  HUNTER:
+    COMMON:
+      material: BOW
+      name: "Охотничий лук"
+      damage-type: physical
+      base-damage: 8.0
+      power-coeff: 1.2
+      crit-bonus: 3.0
+      proc:
+        chance: 8.0
+        effect: "SLOW"
+        duration: 2
+    RARE:
+      material: BOW
+      name: "Лук следопыта"
+      damage-type: physical
+      base-damage: 14.0
+      power-coeff: 1.8
+      crit-bonus: 7.0
+      proc:
+        chance: 15.0
+        effect: "SLOW"
+        duration: 3
+    EPIC:
+      material: BOW
+      name: "Лук Раскола"
+      damage-type: physical
+      base-damage: 22.0
+      power-coeff: 2.8
+      crit-bonus: 12.0
+      proc:
+        chance: 25.0
+        effect: "SLOW"
+        duration: 5
+
+  PRIEST:
+    COMMON:
+      material: BLAZE_ROD
+      name: "Посох жреца"
+      damage-type: magic
+      base-damage: 6.0
+      power-coeff: 1.5
+      crit-bonus: 1.0
+      proc:
+        chance: 10.0
+        effect: "HEAL"
+        duration: 1
+    RARE:
+      material: BLAZE_ROD
+      name: "Священный посох"
+      damage-type: magic
+      base-damage: 10.0
+      power-coeff: 2.2
+      crit-bonus: 3.0
+      proc:
+        chance: 18.0
+        effect: "HEAL"
+        duration: 2
+    EPIC:
+      material: BLAZE_ROD
+      name: "Посох Раскола"
+      damage-type: magic
+      base-damage: 16.0
+      power-coeff: 3.5
+      crit-bonus: 6.0
+      proc:
+        chance: 30.0
+        effect: "HEAL"
+        duration: 3
+
+  MAGE:
+    COMMON:
+      material: STICK
+      name: "Магический жезл"
+      damage-type: magic
+      base-damage: 10.0
+      power-coeff: 1.8
+      crit-bonus: 4.0
+      proc:
+        chance: 12.0
+        effect: "BURN"
+        duration: 3
+    RARE:
+      material: STICK
+      name: "Жезл архимага"
+      damage-type: magic
+      base-damage: 16.0
+      power-coeff: 2.5
+      crit-bonus: 8.0
+      proc:
+        chance: 20.0
+        effect: "BURN"
+        duration: 4
+    EPIC:
+      material: STICK
+      name: "Жезл Раскола"
+      damage-type: magic
+      base-damage: 24.0
+      power-coeff: 4.0
+      crit-bonus: 15.0
+      proc:
+        chance: 35.0
+        effect: "BURN"
+        duration: 6
+
+  ROGUE:
+    COMMON:
+      material: IRON_SWORD
+      name: "Кинжал разбойника"
+      damage-type: physical
+      base-damage: 8.0
+      power-coeff: 1.3
+      crit-bonus: 8.0
+      proc:
+        chance: 15.0
+        effect: "POISON"
+        duration: 2
+    RARE:
+      material: DIAMOND_SWORD
+      name: "Отравленный клинок"
+      damage-type: physical
+      base-damage: 12.0
+      power-coeff: 2.0
+      crit-bonus: 15.0
+      proc:
+        chance: 25.0
+        effect: "POISON"
+        duration: 3
+    EPIC:
+      material: NETHERITE_SWORD
+      name: "Кинжал Раскола"
+      damage-type: physical
+      base-damage: 18.0
+      power-coeff: 3.0
+      crit-bonus: 25.0
+      proc:
+        chance: 40.0
+        effect: "POISON"
+        duration: 5
+
+# Броня: базовые параметры (полный конфиг добавим в Этапе 3)
+armor:
+  WARRIOR:
+    set-name: "Доспех воина"
+    COMMON:
+      material: IRON
+      phys-resist: 5.0
+      magic-resist: 2.0
+      hp-bonus: 20.0
+    RARE:
+      material: DIAMOND
+      phys-resist: 10.0
+      magic-resist: 5.0
+      hp-bonus: 50.0
+    EPIC:
+      material: NETHERITE
+      phys-resist: 18.0
+      magic-resist: 10.0
+      hp-bonus: 100.0
