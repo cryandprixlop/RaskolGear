@@ -18,6 +18,9 @@ import java.util.List;
 
 public final class RgearCommand implements CommandExecutor, TabCompleter {
 
+    private static final List<String> SLOTS =
+            Arrays.asList("helmet", "chestplate", "leggings", "boots", "set");
+
     private final RaskolGear plugin;
     private final GearFactory factory;
 
@@ -32,7 +35,6 @@ public final class RgearCommand implements CommandExecutor, TabCompleter {
             sendHelp(sender);
             return true;
         }
-
         if (args[0].equalsIgnoreCase("give")) {
             handleGive(sender, args);
         } else {
@@ -44,7 +46,7 @@ public final class RgearCommand implements CommandExecutor, TabCompleter {
     private void sendHelp(CommandSender sender) {
         sender.sendMessage("§6=== RaskolGear ===");
         sender.sendMessage("§e/rgear give <игрок> weapon <класс> <редкость> §7— выдать оружие");
-        sender.sendMessage("§e/rgear give <игрок> armor <класс> <редкость> <слот> §7— выдать броню");
+        sender.sendMessage("§e/rgear give <игрок> armor <класс> <редкость> <слот|set> §7— выдать броню");
     }
 
     private void handleGive(CommandSender sender, String[] args) {
@@ -53,7 +55,7 @@ public final class RgearCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 5) {
-            sender.sendMessage("§cИспользуй: /rgear give <игрок> weapon <класс> <редкость>");
+            sender.sendMessage("§cИспользуй: /rgear give <игрок> <weapon|armor> <класс> <редкость> [слот|set]");
             return;
         }
 
@@ -73,24 +75,65 @@ public final class RgearCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§cНе удалось создать оружие: " + className + " " + rarity);
                 return;
             }
-            HashMap<Integer, ItemStack> overflow = target.getInventory().addItem(item);
-            for (ItemStack drop : overflow.values()) {
-                target.getWorld().dropItem(target.getLocation(), drop);
+            give(target, item);
+            sender.sendMessage("§aВыдано: оружие §e" + className + " " + rarity + " §a-> " + target.getName());
+            plugin.getLogger().info("[Gear] give: " + sender.getName() + " -> " + target.getName()
+                    + " weapon " + className + " " + rarity);
+            return;
+        }
+
+        if (gearType.equals("armor")) {
+            if (args.length < 6) {
+                sender.sendMessage("§cУкажи слот: helmet | chestplate | leggings | boots | set");
+                return;
             }
-            target.sendMessage("§aПолучено оружие: §e" + className + " " + rarity);
-            sender.sendMessage("§aВыдано игроку §e" + target.getName() + "§a: " + className + " " + rarity);
-            plugin.getLogger().info("[Gear] give: " + sender.getName() + " -> "
-                    + target.getName() + " weapon " + className + " " + rarity);
-        } else {
-            sender.sendMessage("§cБроня будет доступна в Этапе 3.");
+            String slot = args[5].toLowerCase();
+            if (slot.equals("set")) {
+                int count = 0;
+                for (String s : SLOTS) {
+                    if (s.equals("set")) continue;
+                    ItemStack piece = factory.createArmor(className, rarity, s);
+                    if (piece != null) {
+                        give(target, piece);
+                        count++;
+                    }
+                }
+                if (count == 0) {
+                    sender.sendMessage("§cНе удалось создать сет: " + className + " " + rarity);
+                    return;
+                }
+                sender.sendMessage("§aВыдан сет (" + count + " предм.): §e"
+                        + className + " " + rarity + " §a-> " + target.getName());
+                plugin.getLogger().info("[Gear] give: " + sender.getName() + " -> " + target.getName()
+                        + " armor set " + className + " " + rarity);
+            } else {
+                ItemStack piece = factory.createArmor(className, rarity, slot);
+                if (piece == null) {
+                    sender.sendMessage("§cНе удалось создать броню: " + className + " " + rarity + " " + slot);
+                    return;
+                }
+                give(target, piece);
+                sender.sendMessage("§aВыдано: броня §e" + className + " " + rarity + " " + slot
+                        + " §a-> " + target.getName());
+                plugin.getLogger().info("[Gear] give: " + sender.getName() + " -> " + target.getName()
+                        + " armor " + className + " " + rarity + " " + slot);
+            }
+            return;
+        }
+
+        sender.sendMessage("§cНеизвестный тип: " + gearType + " §7(weapon | armor)");
+    }
+
+    private void give(Player target, ItemStack item) {
+        HashMap<Integer, ItemStack> overflow = target.getInventory().addItem(item);
+        for (ItemStack drop : overflow.values()) {
+            target.getWorld().dropItem(target.getLocation(), drop);
         }
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) {
-            return filter(Arrays.asList("give"), args[0]);
-        }
+        if (args.length == 1) return filter(Arrays.asList("give"), args[0]);
         if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             List<String> names = new ArrayList<>();
             for (Player p : Bukkit.getOnlinePlayers()) names.add(p.getName());
@@ -104,6 +147,10 @@ public final class RgearCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 5 && args[0].equalsIgnoreCase("give")) {
             return filter(Arrays.asList("COMMON", "RARE", "EPIC"), args[4]);
+        }
+        if (args.length == 6 && args[0].equalsIgnoreCase("give")
+                && args[2].equalsIgnoreCase("armor")) {
+            return filter(SLOTS, args[5]);
         }
         return Collections.emptyList();
     }
