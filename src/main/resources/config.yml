@@ -1,6 +1,5 @@
 # ===== RaskolGear: оружие и броня классов =====
 
-# Множители редкости
 rarity:
   COMMON:
     color: "&f"
@@ -12,7 +11,7 @@ rarity:
     color: "&5"
     multiplier: 2.5
 
-# Шансы крафта (сумма = 100) — реализуется в Этапе 4
+# Шансы крафта (Этап 4)
 crafting:
   fail-chance: 70.0
   common-chance: 20.0
@@ -21,11 +20,11 @@ crafting:
 
 # ===== Бой (Этап 2) =====
 combat:
-  crit-multiplier: 2.0        # множитель урона при крите
-  bleed-damage-per-sec: 2.0   # урон кровотечения за секунду
-  proc-heal: 6.0              # сколько HP лечит прок HEAL
-  warn-cooldown-seconds: 3    # пауза между предупреждениями «не ваш класс»
-  debug: true                 # лог расчёта урона в консоль (выключи после тестов)
+  crit-multiplier: 2.0
+  bleed-damage-per-sec: 2.0
+  proc-heal: 6.0
+  warn-cooldown-seconds: 3
+  debug: true
 
 # ===== Оружие: 5 классов × 3 редкости =====
 weapons:
@@ -37,10 +36,7 @@ weapons:
       base-damage: 12.0
       power-coeff: 1.0
       crit-bonus: 2.0
-      proc:
-        chance: 5.0
-        effect: "BLEED"
-        duration: 3
+      proc: { chance: 5.0, effect: "BLEED", duration: 3 }
     RARE:
       material: DIAMOND_SWORD
       name: "Стальной клинок"
@@ -48,10 +44,7 @@ weapons:
       base-damage: 18.0
       power-coeff: 1.5
       crit-bonus: 5.0
-      proc:
-        chance: 10.0
-        effect: "BLEED"
-        duration: 5
+      proc: { chance: 10.0, effect: "BLEED", duration: 5 }
     EPIC:
       material: NETHERITE_SWORD
       name: "Меч Раскола"
@@ -59,11 +52,7 @@ weapons:
       base-damage: 28.0
       power-coeff: 2.5
       crit-bonus: 10.0
-      proc:
-        chance: 20.0
-        effect: "STUN"
-        duration: 2
-
+      proc: { chance: 20.0, effect: "STUN", duration: 2 }
   HUNTER:
     COMMON:
       material: BOW
@@ -72,10 +61,7 @@ weapons:
       base-damage: 8.0
       power-coeff: 1.2
       crit-bonus: 3.0
-      proc:
-        chance: 8.0
-        effect: "SLOW"
-        duration: 2
+      proc: { chance: 8.0, effect: "SLOW", duration: 2 }
     RARE:
       material: BOW
       name: "Лук следопыта"
@@ -83,10 +69,7 @@ weapons:
       base-damage: 14.0
       power-coeff: 1.8
       crit-bonus: 7.0
-      proc:
-        chance: 15.0
-        effect: "SLOW"
-        duration: 3
+      proc: { chance: 15.0, effect: "SLOW", duration: 3 }
     EPIC:
       material: BOW
       name: "Лук Раскола"
@@ -94,11 +77,7 @@ weapons:
       base-damage: 22.0
       power-coeff: 2.8
       crit-bonus: 12.0
-      proc:
-        chance: 25.0
-        effect: "SLOW"
-        duration: 5
-
+      proc: { chance: 25.0, effect: "SLOW", duration: 5 }
   PRIEST:
     COMMON:
       material: BLAZE_ROD
@@ -107,10 +86,7 @@ weapons:
       base-damage: 6.0
       power-coeff: 1.5
       crit-bonus: 1.0
-      proc:
-        chance: 10.0
-        effect: "HEAL"
-        duration: 1
+      proc: { chance: 10.0, effect: "HEAL", duration: 1 }
     RARE:
       material: BLAZE_ROD
       name: "Священный посох"
@@ -118,10 +94,7 @@ weapons:
       base-damage: 10.0
       power-coeff: 2.2
       crit-bonus: 3.0
-      proc:
-        chance: 18.0
-        effect: "HEAL"
-        duration: 2
+      proc: { chance: 18.0, effect: "HEAL", duration: 2 }
     EPIC:
       material: BLAZE_ROD
       name: "Посох Раскола"
@@ -129,11 +102,7 @@ weapons:
       base-damage: 16.0
       power-coeff: 3.5
       crit-bonus: 6.0
-      proc:
-        chance: 30.0
-        effect: "HEAL"
-        duration: 3
-
+      proc: { chance: 30.0, effect: "HEAL", duration: 3 }
   MAGE:
     COMMON:
       material: STICK
@@ -142,10 +111,7 @@ weapons:
       base-damage: 10.0
       power-coeff: 1.8
       crit-bonus: 4.0
-      proc:
-        chance: 12.0
-        effect: "BURN"
-        duration: 3
+      proc: { chance: 12.0, effect: "BURN", duration: 3 }
     RARE:
       material: STICK
       name: "Жезл архимага"
@@ -153,10 +119,7 @@ weapons:
       base-damage: 16.0
       power-coeff: 2.5
       crit-bonus: 8.0
-      proc:
-        chance: 20.0
-        effect: "BURN"
-        duration: 4
+      proc: { chance: 20.0, effect: "BURN", duration: 4 }
     EPIC:
       material: STICK
       name: "Жезл Раскола"
@@ -164,11 +127,7 @@ weapons:
       base-damage: 24.0
       power-coeff: 4.0
       crit-bonus: 15.0
-      proc:
-        chance: 35.0
-        effect: "BURN"
-        duration: 6
-
+      proc: { chance: 35.0, effect: "BURN", duration: 6 }
   ROGUE:
     COMMON:
       material: IRON_SWORD
@@ -177,10 +136,7 @@ weapons:
       base-damage: 8.0
       power-coeff: 1.3
       crit-bonus: 8.0
-      proc:
-        chance: 15.0
-        effect: "POISON"
-        duration: 2
+      proc: { chance: 15.0, effect: "POISON", duration: 2 }
     RARE:
       material: DIAMOND_SWORD
       name: "Отравленный клинок"
@@ -188,10 +144,7 @@ weapons:
       base-damage: 12.0
       power-coeff: 2.0
       crit-bonus: 15.0
-      proc:
-        chance: 25.0
-        effect: "POISON"
-        duration: 3
+      proc: { chance: 25.0, effect: "POISON", duration: 3 }
     EPIC:
       material: NETHERITE_SWORD
       name: "Кинжал Раскола"
@@ -199,27 +152,119 @@ weapons:
       base-damage: 18.0
       power-coeff: 3.0
       crit-bonus: 25.0
-      proc:
-        chance: 40.0
-        effect: "POISON"
-        duration: 5
+      proc: { chance: 40.0, effect: "POISON", duration: 5 }
 
-# ===== Броня (полные сеты всех классов — Этап 3) =====
+# ===== Броня: 5 классов × 3 редкости × 4 слота =====
+# Значения резистов и HP — ЗА ОДИН предмет сета.
 armor:
+  resist-cap: 75.0
   WARRIOR:
-    set-name: "Доспех воина"
     COMMON:
+      set-name: "Доспех ополченца"
       material: IRON
       phys-resist: 5.0
       magic-resist: 2.0
-      hp-bonus: 20.0
+      hp-bonus: 10.0
+      set-bonus: { phys-resist: 3.0 }
     RARE:
+      set-name: "Стальной доспех"
       material: DIAMOND
-      phys-resist: 10.0
-      magic-resist: 5.0
-      hp-bonus: 50.0
+      phys-resist: 9.0
+      magic-resist: 4.0
+      hp-bonus: 20.0
+      set-bonus: { phys-resist: 6.0, magic-resist: 2.0 }
     EPIC:
+      set-name: "Доспех Раскола"
       material: NETHERITE
-      phys-resist: 18.0
+      phys-resist: 14.0
+      magic-resist: 7.0
+      hp-bonus: 35.0
+      set-bonus: { phys-resist: 10.0, magic-resist: 5.0 }
+  HUNTER:
+    COMMON:
+      set-name: "Кожаный доспех"
+      material: LEATHER
+      phys-resist: 3.0
+      magic-resist: 2.0
+      hp-bonus: 8.0
+      set-bonus: { phys-resist: 2.0 }
+    RARE:
+      set-name: "Кольчуга следопыта"
+      material: CHAINMAIL
+      phys-resist: 6.0
+      magic-resist: 3.0
+      hp-bonus: 15.0
+      set-bonus: { phys-resist: 4.0, magic-resist: 2.0 }
+    EPIC:
+      set-name: "Доспех Раскола"
+      material: DIAMOND
+      phys-resist: 9.0
+      magic-resist: 5.0
+      hp-bonus: 25.0
+      set-bonus: { phys-resist: 6.0, magic-resist: 4.0 }
+  PRIEST:
+    COMMON:
+      set-name: "Облачение послушника"
+      material: GOLDEN
+      phys-resist: 2.0
+      magic-resist: 5.0
+      hp-bonus: 8.0
+      set-bonus: { magic-resist: 3.0 }
+    RARE:
+      set-name: "Облачение жреца"
+      material: DIAMOND
+      phys-resist: 4.0
+      magic-resist: 9.0
+      hp-bonus: 15.0
+      set-bonus: { magic-resist: 6.0 }
+    EPIC:
+      set-name: "Облачение Раскола"
+      material: NETHERITE
+      phys-resist: 6.0
+      magic-resist: 14.0
+      hp-bonus: 25.0
+      set-bonus: { magic-resist: 10.0, phys-resist: 3.0 }
+  MAGE:
+    COMMON:
+      set-name: "Мантия ученика"
+      material: LEATHER
+      phys-resist: 2.0
+      magic-resist: 6.0
+      hp-bonus: 6.0
+      set-bonus: { magic-resist: 3.0 }
+    RARE:
+      set-name: "Мантия адепта"
+      material: GOLDEN
+      phys-resist: 3.0
       magic-resist: 10.0
-      hp-bonus: 100.0
+      hp-bonus: 12.0
+      set-bonus: { magic-resist: 6.0 }
+    EPIC:
+      set-name: "Мантия Раскола"
+      material: DIAMOND
+      phys-resist: 5.0
+      magic-resist: 16.0
+      hp-bonus: 20.0
+      set-bonus: { magic-resist: 12.0 }
+  ROGUE:
+    COMMON:
+      set-name: "Лёгкий доспех"
+      material: CHAINMAIL
+      phys-resist: 3.0
+      magic-resist: 3.0
+      hp-bonus: 8.0
+      set-bonus: { phys-resist: 2.0, magic-resist: 2.0 }
+    RARE:
+      set-name: "Доспех теневика"
+      material: IRON
+      phys-resist: 5.0
+      magic-resist: 5.0
+      hp-bonus: 15.0
+      set-bonus: { phys-resist: 3.0, magic-resist: 3.0 }
+    EPIC:
+      set-name: "Доспех Раскола"
+      material: NETHERITE
+      phys-resist: 8.0
+      magic-resist: 8.0
+      hp-bonus: 25.0
+      set-bonus: { phys-resist: 6.0, magic-resist: 6.0 }
