@@ -7,6 +7,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.inventory.EquipmentSlotGroup;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -138,6 +139,7 @@ public final class GearFactory {
         lore.add(color("&eФиз. резист: &7+" + phys + "%"));
         lore.add(color("&eМаг. резист: &7+" + magic + "%"));
         lore.add(color("&eЗдоровье: &7+" + hp + " HP"));
+        lore.add(color("&eПрочность: &7Неразрушимый"));
         lore.add(color("&7Сет: &e" + setName + " &7— бонус при 4 предметах"));
         lore.add(color("&cТолько для: &7" + className));
         meta.setLore(lore);
@@ -152,7 +154,11 @@ public final class GearFactory {
         pdc.set(kHp, PersistentDataType.DOUBLE, hp);
         pdc.set(kSet, PersistentDataType.STRING, setName);
 
-        // +HP через ванильный атрибут: работает автоматически при надевании
+        // Неразрушимая броня: не ломается никогда
+        meta.setUnbreakable(true);
+        meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+
+        // +HP через ванильный атрибут
         try {
             EquipmentSlotGroup group = switch (slot) {
                 case "helmet" -> EquipmentSlotGroup.HEAD;
