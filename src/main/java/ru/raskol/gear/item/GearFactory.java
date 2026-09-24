@@ -36,6 +36,7 @@ public final class GearFactory {
     private final NamespacedKey kMagic;
     private final NamespacedKey kHp;
     private final NamespacedKey kSet;
+    private final NamespacedKey kReflect;
 
     public GearFactory(RaskolGear plugin) {
         this.plugin = plugin;
@@ -54,6 +55,7 @@ public final class GearFactory {
         kMagic = new NamespacedKey(plugin, "magic_resist");
         kHp = new NamespacedKey(plugin, "hp_bonus");
         kSet = new NamespacedKey(plugin, "set_name");
+        kReflect = new NamespacedKey(plugin, "reflect");
     }
 
     /* ================= ОРУЖИЕ ================= */
@@ -129,6 +131,7 @@ public final class GearFactory {
         double phys = section.getDouble("phys-resist");
         double magic = section.getDouble("magic-resist");
         double hp = section.getDouble("hp-bonus");
+        double reflect = section.getDouble("reflect");
         String setName = section.getString("set-name", className);
 
         String color = plugin.getConfig().getString("rarity." + rarity + ".color", "&f");
@@ -139,6 +142,10 @@ public final class GearFactory {
         lore.add(color("&eФиз. резист: &7+" + phys + "%"));
         lore.add(color("&eМаг. резист: &7+" + magic + "%"));
         lore.add(color("&eЗдоровье: &7+" + hp + " HP"));
+        if (reflect > 0) {
+            lore.add(color("&eШипы: &7" + reflect + "% урона возвращается атакующему"));
+            lore.add(color("&7(действует при полном сете 4/4)"));
+        }
         lore.add(color("&eПрочность: &7Неразрушимый"));
         lore.add(color("&7Сет: &e" + setName + " &7— бонус при 4 предметах"));
         lore.add(color("&cТолько для: &7" + className));
@@ -153,8 +160,9 @@ public final class GearFactory {
         pdc.set(kMagic, PersistentDataType.DOUBLE, magic);
         pdc.set(kHp, PersistentDataType.DOUBLE, hp);
         pdc.set(kSet, PersistentDataType.STRING, setName);
+        pdc.set(kReflect, PersistentDataType.DOUBLE, reflect);
 
-        // Неразрушимая броня: не ломается никогда
+        // Неразрушимая броня
         meta.setUnbreakable(true);
         meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
 
