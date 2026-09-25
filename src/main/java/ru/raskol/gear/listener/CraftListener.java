@@ -12,7 +12,6 @@ import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
-import org.bukkit.inventory.RecipeChoice;
 import ru.raskol.gear.RaskolGear;
 import ru.raskol.gear.item.GearFactory;
 
@@ -71,10 +70,10 @@ public final class CraftListener implements Listener {
         if (sr == null) return;
         GearFactory.BlueprintData bp = validate(event.getInventory(), sr);
         if (bp == null) {
-            event.setResult(null);
+            event.getInventory().setResult(null);
             return;
         }
-        event.setResult(factory.blueprintTarget(bp));
+        event.getInventory().setResult(factory.blueprintTarget(bp));
     }
 
     /* ========== Сама ковка ========== */
