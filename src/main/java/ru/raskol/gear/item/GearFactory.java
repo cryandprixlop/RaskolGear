@@ -17,13 +17,23 @@ import ru.raskol.gear.RaskolGear;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Фабрика предметов снаряжения с PDC-тегами. */
+/** Фабрика снаряжения, фрагментов и чертежей с PDC-тегами. */
 public final class GearFactory {
+
+    /** Данные чертежа. */
+    public static final class BlueprintData {
+        public String type;    // WEAPON | ARMOR
+        public String cls;     // WARRIOR | ...
+        public String rarity;  // COMMON | RARE | EPIC | LEGENDARY
+        public String slot;    // для брони: helmet | chestplate | leggings | boots
+        public String setKey;  // ключ уникального сета (только LEGENDARY)
+    }
 
     private final RaskolGear plugin;
     private final NamespacedKey kType;
     private final NamespacedKey kClass;
     private final NamespacedKey kRarity;
+    private final NamespacedKey kSetKey;
     private final NamespacedKey kDamageType;
     private final NamespacedKey kBaseDamage;
     private final NamespacedKey kPowerCoeff;
@@ -37,12 +47,19 @@ public final class GearFactory {
     private final NamespacedKey kHp;
     private final NamespacedKey kSet;
     private final NamespacedKey kReflect;
+    private final NamespacedKey kFragTier;
+    private final NamespacedKey kBpType;
+    private final NamespacedKey kBpClass;
+    private final NamespacedKey kBpRarity;
+    private final NamespacedKey kBpSlot;
+    private final NamespacedKey kBpSetKey;
 
     public GearFactory(RaskolGear plugin) {
         this.plugin = plugin;
         kType = new NamespacedKey(plugin, "gear_type");
         kClass = new NamespacedKey(plugin, "gear_class");
         kRarity = new NamespacedKey(plugin, "gear_rarity");
+        kSetKey = new NamespacedKey(plugin, "set_key");
         kDamageType = new NamespacedKey(plugin, "damage_type");
         kBaseDamage = new NamespacedKey(plugin, "base_damage");
         kPowerCoeff = new NamespacedKey(plugin, "power_coeff");
@@ -56,13 +73,40 @@ public final class GearFactory {
         kHp = new NamespacedKey(plugin, "hp_bonus");
         kSet = new NamespacedKey(plugin, "set_name");
         kReflect = new NamespacedKey(plugin, "reflect");
+        kFragTier = new NamespacedKey(plugin, "fragment_tier");
+        kBpType = new NamespacedKey(plugin, "bp_type");
+        kBpClass = new NamespacedKey(plugin, "bp_class");
+        kBpRarity = new NamespacedKey(plugin, "bp_rarity");
+        kBpSlot = new NamespacedKey(plugin, "bp_slot");
+        kBpSetKey = new NamespacedKey(plugin, "bp_set_key");
+    }
+
+    /* ================= СЕКЦИИ КОНФИГА ================= */
+
+    /**
+     * Путь к секции предмета: для LEGENDARY — с ключом сета,
+     * для остальных редкостей — напрямую.
+     */
+    private ConfigurationSection gearSection(String kind, String cls, String rarity, String setKey) {
+        String base = kind + "." + cls + "." + rarity;
+        if ("LEGENDARY".equals(rarity)) {
+            if (setKey == null || setKey.isEmpty()) return null;
+            return plugin.getConfig().getConfigurationSection(base + "." + setKey);
+        }
+        return plugin.getConfig().getConfigurationSection(base);
+    }
+
+    /** Имя уникального сета (для лора и сообщений). */
+    public String setNameOf(String cls, String rarity, String setKey) {
+        if (!"LEGENDARY".equals(rarity) || setKey == null) return null;
+        return plugin.getConfig().getString(
+                "armor." + cls + ".LEGENDARY." + setKey + ".set-name");
     }
 
     /* ================= ОРУЖИЕ ================= */
 
-    public ItemStack createWeapon(String className, String rarity) {
-        ConfigurationSection section = plugin.getConfig()
-                .getConfigurationSection("weapons." + className + "." + rarity);
+    public ItemStack createWeapon(String className, String rarity, String setKey) {
+        ConfigurationSection section = gearSection("weapons", className, rarity, setKey);
         if (section == null) return null;
 
         Material material = Material.matchMaterial(section.getString("material", "IRON_SWORD"));
@@ -85,6 +129,10 @@ public final class GearFactory {
                     + "% шанс " + section.getString("proc.effect")
                     + " (" + section.getInt("proc.duration") + " сек)"));
         }
+        String setName = setNameOf(className, rarity, setKey);
+        if (setName != null) {
+            lore.add(color("&7Уникальный сет: &e" + setName));
+        }
         lore.add(color("&cТолько для: &7" + className));
         meta.setLore(lore);
 
@@ -92,6 +140,7 @@ public final class GearFactory {
         pdc.set(kType, PersistentDataType.STRING, "WEAPON");
         pdc.set(kClass, PersistentDataType.STRING, className);
         pdc.set(kRarity, PersistentDataType.STRING, rarity);
+        pdc.set(kSetKey, PersistentDataType.STRING, setKey == null ? "" : setKey);
         pdc.set(kDamageType, PersistentDataType.STRING, section.getString("damage-type", "physical"));
         pdc.set(kBaseDamage, PersistentDataType.DOUBLE, section.getDouble("base-damage"));
         pdc.set(kPowerCoeff, PersistentDataType.DOUBLE, section.getDouble("power-coeff"));
@@ -108,9 +157,8 @@ public final class GearFactory {
 
     /* ================= БРОНЯ ================= */
 
-    public ItemStack createArmor(String className, String rarity, String slot) {
-        ConfigurationSection section = plugin.getConfig()
-                .getConfigurationSection("armor." + className + "." + rarity);
+    public ItemStack createArmor(String className, String rarity, String slot, String setKey) {
+        ConfigurationSection section = gearSection("armor", className, rarity, setKey);
         if (section == null) return null;
 
         String suffix = switch (slot) {
@@ -155,6 +203,7 @@ public final class GearFactory {
         pdc.set(kType, PersistentDataType.STRING, "ARMOR");
         pdc.set(kClass, PersistentDataType.STRING, className);
         pdc.set(kRarity, PersistentDataType.STRING, rarity);
+        pdc.set(kSetKey, PersistentDataType.STRING, setKey == null ? "" : setKey);
         pdc.set(kSlot, PersistentDataType.STRING, slot);
         pdc.set(kPhys, PersistentDataType.DOUBLE, phys);
         pdc.set(kMagic, PersistentDataType.DOUBLE, magic);
@@ -162,11 +211,9 @@ public final class GearFactory {
         pdc.set(kSet, PersistentDataType.STRING, setName);
         pdc.set(kReflect, PersistentDataType.DOUBLE, reflect);
 
-        // Неразрушимая броня
         meta.setUnbreakable(true);
         meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
 
-        // +HP через ванильный атрибут
         try {
             EquipmentSlotGroup group = switch (slot) {
                 case "helmet" -> EquipmentSlotGroup.HEAD;
@@ -184,6 +231,115 @@ public final class GearFactory {
 
         item.setItemMeta(meta);
         return item;
+    }
+
+    /* ================= ФРАГМЕНТЫ ================= */
+
+    public static Material fragmentMaterial(String tier) {
+        return switch (tier) {
+            case "iron" -> Material.IRON_NUGGET;
+            case "steel" -> Material.GOLD_NUGGET;
+            case "mithril" -> Material.ECHO_SHARD;
+            default -> null;
+        };
+    }
+
+    public ItemStack createFragment(String tier, int amount) {
+        Material mat = fragmentMaterial(tier);
+        if (mat == null) return null;
+        ItemStack item = new ItemStack(mat, Math.max(1, amount));
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return null;
+
+        String name = switch (tier) {
+            case "iron" -> "&fЖелезный фрагмент";
+            case "steel" -> "&7Стальной фрагмент";
+            case "mithril" -> "&bМифриловый фрагмент";
+            default -> "&fФрагмент";
+        };
+        meta.setDisplayName(color(name));
+        List<String> lore = new ArrayList<>();
+        lore.add(color("&7Используется в ковке снаряжения."));
+        lore.add(color("&7Рецепт: чертёж в центр + 8 фрагментов."));
+        meta.setLore(lore);
+        meta.getPersistentDataContainer().set(kFragTier, PersistentDataType.STRING, tier);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public String parseFragment(ItemStack item) {
+        if (item == null) return null;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return null;
+        return meta.getPersistentDataContainer().get(kFragTier, PersistentDataType.STRING);
+    }
+
+    /* ================= ЧЕРТЕЖИ ================= */
+
+    public ItemStack createBlueprint(String type, String cls, String rarity, String slot, String setKey) {
+        ItemStack item = new ItemStack(Material.PAPER, 1);
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return null;
+
+        String color = plugin.getConfig().getString("rarity." + rarity + ".color", "&f");
+        String targetName;
+        if ("WEAPON".equals(type)) {
+            targetName = gearSection("weapons", cls, rarity, setKey) != null
+                    ? gearSection("weapons", cls, rarity, setKey).getString("name", cls + " weapon")
+                    : cls + " weapon";
+        } else {
+            String setName = gearSection("armor", cls, rarity, setKey) != null
+                    ? gearSection("armor", cls, rarity, setKey).getString("set-name", cls)
+                    : cls;
+            targetName = setName + ": " + slotRu(slot);
+        }
+        meta.setDisplayName(color(color + "Чертёж: " + targetName));
+
+        List<String> lore = new ArrayList<>();
+        lore.add(color("&7──────────────"));
+        lore.add(color("&eТип: &7" + ("WEAPON".equals(type) ? "оружие" : "броня")));
+        lore.add(color("&eКласс: &7" + cls));
+        lore.add(color("&eКачество: &7" + rarity));
+        if (setKey != null) lore.add(color("&eСет: &7" + setKey));
+        if ("ARMOR".equals(type)) lore.add(color("&eСлот: &7" + slotRu(slot)));
+        lore.add(color("&7Ковка: чертёж в центр верстака"));
+        lore.add(color("&7+ 8 фрагментов вокруг."));
+        meta.setLore(lore);
+
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        pdc.set(kBpType, PersistentDataType.STRING, type);
+        pdc.set(kBpClass, PersistentDataType.STRING, cls);
+        pdc.set(kBpRarity, PersistentDataType.STRING, rarity);
+        pdc.set(kBpSlot, PersistentDataType.STRING, slot == null ? "" : slot);
+        pdc.set(kBpSetKey, PersistentDataType.STRING, setKey == null ? "" : setKey);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public BlueprintData parseBlueprint(ItemStack item) {
+        if (item == null || item.getType() != Material.PAPER) return null;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return null;
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        String type = pdc.get(kBpType, PersistentDataType.STRING);
+        if (type == null) return null;
+        BlueprintData d = new BlueprintData();
+        d.type = type;
+        d.cls = pdc.get(kBpClass, PersistentDataType.STRING);
+        d.rarity = pdc.get(kBpRarity, PersistentDataType.STRING);
+        d.slot = pdc.get(kBpSlot, PersistentDataType.STRING);
+        d.setKey = pdc.get(kBpSetKey, PersistentDataType.STRING);
+        if (d.slot != null && d.slot.isEmpty()) d.slot = null;
+        if (d.setKey != null && d.setKey.isEmpty()) d.setKey = null;
+        return d;
+    }
+
+    /** Целевой предмет чертежа. */
+    public ItemStack blueprintTarget(BlueprintData bp) {
+        if (bp == null) return null;
+        if ("WEAPON".equals(bp.type)) return createWeapon(bp.cls, bp.rarity, bp.setKey);
+        if ("ARMOR".equals(bp.type) && bp.slot != null) return createArmor(bp.cls, bp.rarity, bp.slot, bp.setKey);
+        return null;
     }
 
     /* ================= ЧТЕНИЕ ================= */
