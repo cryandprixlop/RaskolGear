@@ -21,8 +21,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Броня: снижение входящего урона по резистам (физ/маг) + сет-бонусы (4/4).
- * Шипы (reflect): работают ТОЛЬКО при полном сете, значение суммарное из конфига.
+ * Броня: резисты физ/маг + сет-бонусы и шипы (reflect).
+ * Сеты считаются по ключу class:rarity:setKey — разные сеты не смешиваются.
  */
 public final class ArmorDefenseListener implements Listener {
 
@@ -30,6 +30,7 @@ public final class ArmorDefenseListener implements Listener {
     private final NamespacedKey kType;
     private final NamespacedKey kClass;
     private final NamespacedKey kRarity;
+    private final NamespacedKey kSetKey;
     private final NamespacedKey kPhys;
     private final NamespacedKey kMagic;
     private final Map<UUID, Long> lastReflectMsg = new HashMap<>();
@@ -39,6 +40,7 @@ public final class ArmorDefenseListener implements Listener {
         kType = new NamespacedKey(plugin, "gear_type");
         kClass = new NamespacedKey(plugin, "gear_class");
         kRarity = new NamespacedKey(plugin, "gear_rarity");
+        kSetKey = new NamespacedKey(plugin, "set_key");
         kPhys = new NamespacedKey(plugin, "phys_resist");
         kMagic = new NamespacedKey(plugin, "magic_resist");
     }
@@ -58,17 +60,14 @@ public final class ArmorDefenseListener implements Listener {
             if (pdc == null) continue;
             phys += pdc.getOrDefault(kPhys, PersistentDataType.DOUBLE, 0.0);
             magic += pdc.getOrDefault(kMagic, PersistentDataType.DOUBLE, 0.0);
-            String cls = pdc.get(kClass, PersistentDataType.STRING);
-            String rar = pdc.get(kRarity, PersistentDataType.STRING);
-            if (cls != null && rar != null) setCount.merge(cls + ":" + rar, 1, Integer::sum);
+            setCount.merge(countKey(pdc), 1, Integer::sum);
         }
 
-        // Сет-бонус при 4/4
+        // Сет-бонус при 4/4 одного сета
         for (Map.Entry<String, Integer> entry : setCount.entrySet()) {
             if (entry.getValue() < 4) continue;
-            String[] parts = entry.getKey().split(":");
             ConfigurationSection bonus = plugin.getConfig()
-                    .getConfigurationSection("armor." + parts[0] + "." + parts[1] + ".set-bonus");
+                    .getConfigurationSection(basePath(entry.getKey()) + ".set-bonus");
             if (bonus == null) continue;
             phys += bonus.getDouble("phys-resist");
             magic += bonus.getDouble("magic-resist");
@@ -91,7 +90,6 @@ public final class ArmorDefenseListener implements Listener {
     public void onReflect(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player victim)) return;
         if (victim.isDead()) return;
-        // урон от проков/кровотечения (CUSTOM) не отражаем — защита от цепочек
         if (event.getCause() == EntityDamageEvent.DamageCause.CUSTOM) return;
 
         double reflect = fullSetReflect(victim);
@@ -115,28 +113,38 @@ public final class ArmorDefenseListener implements Listener {
         }
     }
 
-    /** Суммарный процент шипов: только если надет полный сет (4/4) с reflect в конфиге. */
     private double fullSetReflect(Player player) {
         Map<String, Integer> setCount = new HashMap<>();
         for (ItemStack armor : player.getInventory().getArmorContents()) {
             PersistentDataContainer pdc = armorPdc(armor);
             if (pdc == null) continue;
-            String cls = pdc.get(kClass, PersistentDataType.STRING);
-            String rar = pdc.get(kRarity, PersistentDataType.STRING);
-            if (cls != null && rar != null) setCount.merge(cls + ":" + rar, 1, Integer::sum);
+            setCount.merge(countKey(pdc), 1, Integer::sum);
         }
         double reflect = 0.0;
         for (Map.Entry<String, Integer> entry : setCount.entrySet()) {
             if (entry.getValue() < 4) continue;
-            String[] parts = entry.getKey().split(":");
-            reflect = Math.max(reflect, plugin.getConfig()
-                    .getDouble("armor." + parts[0] + "." + parts[1] + ".reflect", 0.0));
+            reflect = Math.max(reflect,
+                    plugin.getConfig().getDouble(basePath(entry.getKey()) + ".reflect", 0.0));
         }
         double cap = plugin.getConfig().getDouble("armor.reflect-cap", 25.0);
         return Math.min(reflect, cap);
     }
 
     /* ========== Вспомогательные ========== */
+
+    private String countKey(PersistentDataContainer pdc) {
+        String cls = pdc.get(kClass, PersistentDataType.STRING);
+        String rar = pdc.get(kRarity, PersistentDataType.STRING);
+        String set = pdc.getOrDefault(kSetKey, PersistentDataType.STRING, "");
+        return cls + ":" + rar + ":" + set;
+    }
+
+    /** armor.<class>.<rarity> или armor.<class>.LEGENDARY.<setkey> */
+    private String basePath(String countKey) {
+        String[] parts = countKey.split(":", 3);
+        String set = parts.length > 2 ? parts[2] : "";
+        return "armor." + parts[0] + "." + parts[1] + (set.isEmpty() ? "" : "." + set);
+    }
 
     private PersistentDataContainer armorPdc(ItemStack item) {
         if (item == null) return null;
