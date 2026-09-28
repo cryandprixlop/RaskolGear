@@ -1,5 +1,6 @@
 package ru.raskol.gear.listener;
 
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -59,10 +60,16 @@ public final class WeaponDamageListener implements Listener {
         if (attacker == null) return;
 
         ItemStack weapon = attacker.getInventory().getItemInMainHand();
+        // ПРОВЕРКА: пустая рука или воздух — не обрабатываем, ванильный урон работает
+        if (weapon == null || weapon.getType() == Material.AIR) return;
+        
         ItemMeta meta = weapon.getItemMeta();
         if (meta == null) return;
+        
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        if (!"WEAPON".equals(pdc.get(kType, PersistentDataType.STRING))) return;
+        String type = pdc.get(kType, PersistentDataType.STRING);
+        // Если это не наше оружие — не обрабатываем, ванильный урон работает
+        if (!"WEAPON".equals(type)) return;
 
         String weaponClass = pdc.get(kClass, PersistentDataType.STRING);
         String playerClass = classes.classId(attacker);
