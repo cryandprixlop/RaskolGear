@@ -38,6 +38,46 @@ combat:
   damage-multiplier: 0.35
   max-single-hit: 300.0
   max-single-hit-pvp: 200.0
+  class-lock: true
+
+# ===== Дроп с мобов MythicMobs =====
+drops:
+  enabled: true
+  boss-min-level: 50        # уровень, с которого моб считается боссом
+  boss-marker: "☠"          # ИЛИ метка в имени моба
+  tiers:
+    - min-level: 1
+      max-level: 9
+      fragment: iron
+      fragment-chance: 25.0
+      fragment-amount: 1
+    - min-level: 10
+      max-level: 24
+      fragment: iron
+      fragment-chance: 45.0
+      fragment-amount: 2
+    - min-level: 25
+      max-level: 39
+      fragment: steel
+      fragment-chance: 35.0
+      fragment-amount: 1
+    - min-level: 40
+      max-level: 49
+      fragment: steel
+      fragment-chance: 55.0
+      fragment-amount: 2
+    - min-level: 50
+      max-level: 999
+      fragment: mithril
+      fragment-chance: 65.0
+      fragment-amount: 1
+  bosses:
+    blueprint-chance: 15.0
+    blueprint-rarities:
+      COMMON: 60.0
+      RARE: 25.0
+      EPIC: 12.0
+      LEGENDARY: 3.0
 
 # ===== Оружие =====
 weapons:
