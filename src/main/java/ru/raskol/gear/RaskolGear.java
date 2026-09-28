@@ -7,6 +7,7 @@ import ru.raskol.gear.hook.ClassesHook;
 import ru.raskol.gear.item.GearFactory;
 import ru.raskol.gear.listener.ArmorDefenseListener;
 import ru.raskol.gear.listener.CraftListener;
+import ru.raskol.gear.listener.MobDropListener;
 import ru.raskol.gear.listener.WeaponDamageListener;
 
 public final class RaskolGear extends JavaPlugin {
@@ -32,12 +33,13 @@ public final class RaskolGear extends JavaPlugin {
                 new WeaponDamageListener(this, classesHook), this);
         getServer().getPluginManager().registerEvents(
                 new ArmorDefenseListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new MobDropListener(this, gearFactory), this);
 
         craftListener = new CraftListener(this, gearFactory);
         getServer().getPluginManager().registerEvents(craftListener, this);
         craftListener.registerRecipes();
 
-        // Динамический подсчёт: сколько реально секций в конфиге
         int weaponSets = countSections("weapons");
         int armorSets = countSections("armor");
 
@@ -45,11 +47,10 @@ public final class RaskolGear extends JavaPlugin {
                 + " включён. Classes hook: " + (classesHook.isAvailable() ? "да" : "НЕТ")
                 + ". Сетов брони: " + armorSets
                 + ", сетов оружия: " + weaponSets
-                + ", крафт: активен.");
+                + ", крафт: активен, дроп с MM-мобов: "
+                + (getConfig().getBoolean("drops.enabled", true) ? "активен" : "выключен") + ".");
     }
 
-    /** Считает реальные сеты: для COMMON/RARE/EPIC — 1 секция = 1 сет,
-     *  для LEGENDARY — каждая подсекция (porcupine, dragon...) = отдельный сет. */
     private int countSections(String kind) {
         org.bukkit.configuration.ConfigurationSection root =
                 getConfig().getConfigurationSection(kind);
