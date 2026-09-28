@@ -15,15 +15,13 @@ rarity:
     multiplier: 4.0
 
 # ===== Крафт =====
-# Рецепт: чертёж в центр + 8 фрагментов вокруг (верстак 3x3)
-# Чертежи LEGENDARY уникальны под каждый сет (ключ сета в PDC чертежа)
 crafting:
   fragments-required: 8
   tier-by-rarity:
     COMMON: iron
     RARE: steel
     EPIC: mithril
-    LEGENDARY: mithril   # легендарный крафтится как эпический
+    LEGENDARY: mithril
   success-chance:
     COMMON: 90.0
     RARE: 70.0
@@ -42,7 +40,6 @@ combat:
   max-single-hit-pvp: 200.0
 
 # ===== Оружие =====
-# COMMON/RARE/EPIC — напрямую; LEGENDARY — уникальные сеты по ключам
 weapons:
   WARRIOR:
     COMMON:
@@ -228,8 +225,6 @@ weapons:
         duration: 5
 
 # ===== Броня =====
-# COMMON/RARE/EPIC — напрямую; LEGENDARY — уникальные сеты по ключам
-# reflect — шипы: работают ТОЛЬКО при полном сете 4/4 одного ключа
 armor:
   resist-cap: 75.0
   reflect-cap: 25.0
@@ -259,8 +254,8 @@ armor:
       porcupine:
         set-name: "Доспехи дикобраза"
         material: NETHERITE
-        phys-resist: 9.0
-        magic-resist: 9.0
+        phys-resist: 3.0
+        magic-resist: 3.0
         hp-bonus: 125.0
         reflect: 12.0
   HUNTER:
