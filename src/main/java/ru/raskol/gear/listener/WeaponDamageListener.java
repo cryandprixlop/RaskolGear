@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Бой: класс-лок, урон (base+Power*coeff)*multiplier, криты, капы, проки. */
+/** Бой: класс-лок (отключаемый), урон (base+Power*coeff)*multiplier, криты, капы, проки. */
 public final class WeaponDamageListener implements Listener {
 
     private final RaskolGear plugin;
@@ -60,23 +60,24 @@ public final class WeaponDamageListener implements Listener {
         if (attacker == null) return;
 
         ItemStack weapon = attacker.getInventory().getItemInMainHand();
-        // ПРОВЕРКА: пустая рука или воздух — не обрабатываем, ванильный урон работает
         if (weapon == null || weapon.getType() == Material.AIR) return;
-        
+
         ItemMeta meta = weapon.getItemMeta();
         if (meta == null) return;
-        
+
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        String type = pdc.get(kType, PersistentDataType.STRING);
-        // Если это не наше оружие — не обрабатываем, ванильный урон работает
-        if (!"WEAPON".equals(type)) return;
+        if (!"WEAPON".equals(pdc.get(kType, PersistentDataType.STRING))) return;
 
         String weaponClass = pdc.get(kClass, PersistentDataType.STRING);
         String playerClass = classes.classId(attacker);
 
-        // Класс-лок: чужой класс не бьёт этим оружием
-        if (playerClass != null && weaponClass != null && !playerClass.equals(weaponClass)) {
+        // Класс-лок (отключается в конфиге: combat.class-lock: false)
+        if (plugin.getConfig().getBoolean("combat.class-lock", true)
+                && playerClass != null && weaponClass != null
+                && !playerClass.equals(weaponClass)) {
             event.setCancelled(true);
+            debug("[Gear] cancel: class-lock " + attacker.getName()
+                    + " (player=" + playerClass + ", weapon=" + weaponClass + ")");
             warn(attacker, "§cЭто оружие не для вашего класса: нужно §e" + weaponClass + "§c.");
             return;
         }
@@ -86,14 +87,17 @@ public final class WeaponDamageListener implements Listener {
         double coeff = pdc.getOrDefault(kPowerCoeff, PersistentDataType.DOUBLE, 0.0);
         String damageType = pdc.getOrDefault(kDamageType, PersistentDataType.STRING, "physical");
 
-        // Базовая формула: base + Power * coeff
-        double finalDamage = base + power * coeff;
+        double finalDamage = (base + power * coeff)
+                * plugin.getConfig().getDouble("combat.damage-multiplier", 1.0);
 
-        // ГЛОБАЛЬНЫЙ множитель урона (нерф/бафф всего оружия разом)
-        double multiplier = plugin.getConfig().getDouble("combat.damage-multiplier", 1.0);
-        finalDamage *= multiplier;
+        // ПОЛ УРОНА: предмет с нулевыми статами не обнуляет бой — оставляем ванильный урон
+        if (finalDamage <= 0.0) {
+            debug("[Gear] skip: zero stats on weapon of " + attacker.getName()
+                    + " (base=" + base + ", coeff=" + coeff + ") — vanilla damage kept");
+            return;
+        }
 
-        // Крит: база класса (melee/spell по типу урона) + бонус оружия
+        // Крит
         double critChance = classes.critBase(attacker, "physical".equals(damageType))
                 + pdc.getOrDefault(kCritBonus, PersistentDataType.DOUBLE, 0.0);
         boolean crit = ThreadLocalRandom.current().nextDouble(100.0) < critChance;
@@ -102,29 +106,22 @@ public final class WeaponDamageListener implements Listener {
             attacker.sendMessage("§6⚡ КРИТ! §e" + fmt(finalDamage) + " урона.");
         }
 
-        // Кап урона: не более max-single-hit за один удар
+        // Капы
         double maxHit = plugin.getConfig().getDouble("combat.max-single-hit", 300.0);
         if (event.getEntity() instanceof Player) {
-            double maxPvp = plugin.getConfig().getDouble("combat.max-single-hit-pvp", 200.0);
-            maxHit = Math.min(maxHit, maxPvp);
+            maxHit = Math.min(maxHit, plugin.getConfig().getDouble("combat.max-single-hit-pvp", 200.0));
         }
         if (finalDamage > maxHit) {
-            if (plugin.getConfig().getBoolean("combat.debug", false)) {
-                plugin.getLogger().info("[Gear] cap applied: " + fmt(finalDamage) + " -> " + fmt(maxHit));
-            }
+            debug("[Gear] cap applied: " + fmt(finalDamage) + " -> " + fmt(maxHit));
             finalDamage = maxHit;
         }
 
         event.setDamage(finalDamage);
+        debug("[Gear] hit: " + attacker.getName() + " -> " + event.getEntity().getName()
+                + " weapon=" + weaponClass + " power=" + power + " base=" + base
+                + " final=" + fmt(finalDamage) + (crit ? " CRIT" : ""));
 
-        if (plugin.getConfig().getBoolean("combat.debug", false)) {
-            plugin.getLogger().info("[Gear] hit: " + attacker.getName()
-                    + " weapon=" + weaponClass + " power=" + power
-                    + " base=" + base + " multiplier=" + multiplier
-                    + " final=" + fmt(finalDamage) + (crit ? " CRIT" : ""));
-        }
-
-        // Прок эффекта
+        // Прок
         double procChance = pdc.getOrDefault(kProcChance, PersistentDataType.DOUBLE, 0.0);
         if (procChance > 0 && ThreadLocalRandom.current().nextDouble(100.0) < procChance) {
             applyProc(attacker, event.getEntity(), pdc);
@@ -196,6 +193,12 @@ public final class WeaponDamageListener implements Listener {
         if (prev != null && now - prev < cooldown) return;
         lastWarn.put(player.getUniqueId(), now);
         player.sendMessage(message);
+    }
+
+    private void debug(String message) {
+        if (plugin.getConfig().getBoolean("combat.debug", false)) {
+            plugin.getLogger().info(message);
+        }
     }
 
     private static String fmt(double v) {
