@@ -6,6 +6,7 @@ import ru.raskol.gear.command.RgearCommand;
 import ru.raskol.gear.hook.ClassesHook;
 import ru.raskol.gear.item.GearFactory;
 import ru.raskol.gear.listener.ArmorDefenseListener;
+import ru.raskol.gear.listener.BossHealthListener;
 import ru.raskol.gear.listener.CraftListener;
 import ru.raskol.gear.listener.MobDropListener;
 import ru.raskol.gear.listener.MobSpawnListener;
@@ -38,6 +39,8 @@ public final class RaskolGear extends JavaPlugin {
                 new MobDropListener(this, gearFactory), this);
         getServer().getPluginManager().registerEvents(
                 new MobSpawnListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new BossHealthListener(this), this);
 
         craftListener = new CraftListener(this, gearFactory);
         getServer().getPluginManager().registerEvents(craftListener, this);
@@ -50,7 +53,8 @@ public final class RaskolGear extends JavaPlugin {
                 + " включён. Classes hook: " + (classesHook.isAvailable() ? "да" : "НЕТ")
                 + ". Сетов: " + armorSets + " брони, " + weaponSets + " оружия"
                 + ". Крафт: активен, дроп: "
-                + (getConfig().getBoolean("drops.enabled", true) ? "активен" : "выключен") + ".");
+                + (getConfig().getBoolean("drops.enabled", true) ? "активен" : "выключен")
+                + ", виртуальное HP боссов: активно.");
     }
 
     private int countSections(String kind) {
