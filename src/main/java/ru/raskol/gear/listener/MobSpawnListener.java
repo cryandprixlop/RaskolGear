@@ -11,18 +11,17 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntitySpawnEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.scheduler.BukkitRunnable;
 import ru.raskol.gear.RaskolGear;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Ставит HP и урон мобам Раскола (обход ванильного cap 1024 HP).
- * Уровень и имя читаются из кастомного имени моба: "… [5 ур.]", "☠ … [BOSS 50 ур.]".
+ * Ставит HP и урон мобам Раскола при первом ударе по ним.
+ * (MM-мобы не триггерят стандартные спавн-события, поэтому применяем статы при уроне.)
  */
 public final class MobSpawnListener implements Listener {
 
@@ -45,22 +44,15 @@ public final class MobSpawnListener implements Listener {
         return m.find() ? Integer.parseInt(m.group(1)) : null;
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onEntitySpawn(EntitySpawnEvent event) {
-        Entity entity = event.getEntity();
-        if (!(entity instanceof LivingEntity)) return;
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onEntityDamage(EntityDamageByEntityEvent event) {
+        Entity victim = event.getEntity();
+        if (!(victim instanceof LivingEntity living)) return;
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (!entity.isValid()) return;
-                handle((LivingEntity) entity);
-            }
-        }.runTask(plugin);
-    }
+        // Проверяем только мобов, которых ещё не трогали
+        if (living.getPersistentDataContainer().has(kStatsApplied, PersistentDataType.BYTE)) return;
 
-    private void handle(LivingEntity entity) {
-        String raw = entity.getCustomName();
+        String raw = living.getCustomName();
         if (raw == null) return;
         
         String name = ChatColor.stripColor(raw);
@@ -68,19 +60,17 @@ public final class MobSpawnListener implements Listener {
         
         if (level == null) return; // ванильный или чужой моб
 
-        if (entity.getPersistentDataContainer().has(kStatsApplied, PersistentDataType.BYTE)) return;
-
         ConfigurationSection stats = findStats(name);
         if (stats == null) return;
 
         double hp = stats.getDouble("hp", 0.0);
         double damage = stats.getDouble("damage", 0.0);
 
-        if (hp > 0) applyMaxHealth(entity, hp);
-        if (damage > 0) applyAttackDamage(entity, damage);
+        if (hp > 0) applyMaxHealth(living, hp);
+        if (damage > 0) applyAttackDamage(living, damage);
 
-        entity.getPersistentDataContainer().set(kStatsApplied, PersistentDataType.BYTE, (byte) 1);
-        plugin.getLogger().info("[Gear] mob stats applied: " + name
+        living.getPersistentDataContainer().set(kStatsApplied, PersistentDataType.BYTE, (byte) 1);
+        plugin.getLogger().info("[Gear] mob stats applied on first hit: " + name
                 + " hp=" + hp + " dmg=" + damage);
     }
 
@@ -114,7 +104,7 @@ public final class MobSpawnListener implements Listener {
                     AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.ANY));
         }
         
-        // Ставим текущее HP = целевое
+        // Ставим текущее HP = целевое (иначе моб появится с 1024 из 35000)
         entity.setHealth(Math.min(target, attr.getValue()));
     }
 
