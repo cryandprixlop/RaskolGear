@@ -28,12 +28,10 @@ public final class MobSpawnListener implements Listener {
 
     private final RaskolGear plugin;
     private final NamespacedKey kStatsApplied;
-    private final NamespacedKey kHpMod;
 
     public MobSpawnListener(RaskolGear plugin) {
         this.plugin = plugin;
         kStatsApplied = new NamespacedKey(plugin, "mob_stats_applied");
-        kHpMod = new NamespacedKey(plugin, "boss_hp_0");
         plugin.getLogger().info("[Gear] MobSpawnListener initialized");
     }
 
@@ -58,11 +56,7 @@ public final class MobSpawnListener implements Listener {
         
         if (level == null) return;
 
-        // Отладка: пишем в лог каждый раз, когда видим нашего моба
-        plugin.getLogger().info("[Gear] MobSpawnListener triggered for: " + name + " lvl=" + level);
-
         if (living.getPersistentDataContainer().has(kStatsApplied, PersistentDataType.BYTE)) {
-            plugin.getLogger().info("[Gear] Stats already applied for: " + name);
             return;
         }
 
@@ -92,29 +86,48 @@ public final class MobSpawnListener implements Listener {
         return null;
     }
 
+    /** HP выше 1024: база 1024 + множественные модификаторы ADD_NUMBER. */
     private void applyMaxHealth(LivingEntity entity, double target) {
         AttributeInstance attr = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
         if (attr == null) return;
         
+        // Убираем все наши старые модификаторы
         attr.getModifiers().stream()
-                .filter(m -> m.getKey().equals(kHpMod))
+                .filter(m -> m.getKey().getNamespace().equals(plugin.getName().toLowerCase()))
                 .forEach(attr::removeModifier);
         
+        // База = 1024 (ванильный cap)
         double base = Math.min(1024.0, attr.getBaseValue());
         attr.setBaseValue(base);
         
+        // Добавляем множественные модификаторы по 8000 HP каждый
         double need = target - base;
-        if (need > 0.5) {
-            attr.addModifier(new AttributeModifier(kHpMod, need,
+        int count = (int) Math.ceil(need / 8000.0);
+        double each = need / count;
+        
+        for (int i = 0; i < count; i++) {
+            NamespacedKey key = new NamespacedKey(plugin, "boss_hp_" + i);
+            attr.addModifier(new AttributeModifier(key, each,
                     AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.ANY));
         }
         
-        entity.setHealth(Math.min(target, attr.getValue()));
+        // Отладка: показываем реальное значение атрибута
+        plugin.getLogger().info("[Gear] HP debug for " + entity.getName() 
+                + ": base=" + attr.getBaseValue() 
+                + ", value=" + attr.getValue() 
+                + ", modifiers=" + count);
+        
+        // Ставим текущее HP = целевое
+        double maxHp = attr.getValue();
+        entity.setHealth(Math.min(target, maxHp));
+        
+        plugin.getLogger().info("[Gear] Current HP after setHealth: " + entity.getHealth());
     }
 
     private void applyAttackDamage(LivingEntity entity, double target) {
         AttributeInstance attr = entity.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE);
         if (attr == null) return;
         attr.setBaseValue(Math.min(target, 2048.0));
+        plugin.getLogger().info("[Gear] Damage applied: " + target + " (base=" + attr.getBaseValue() + ")");
     }
 }
