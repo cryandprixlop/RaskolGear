@@ -45,6 +45,11 @@ drops:
   enabled: true
   boss-min-level: 50
   boss-marker: "☠"
+  # Точная настройка HP боссов (обход ванильного cap 1024)
+  # Ключ — подстрока из имени моба; значение — целевое HP
+  boss-health:
+    "Король Дикобраз": 35000
+    "Барон Топей": 45000
   tiers:
     - min-level: 1
       max-level: 9
