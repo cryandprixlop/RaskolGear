@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 
 /**
  * Ставит HP и урон мобам Раскола при первом ударе по ним.
- * (MM-мобы не триггерят стандартные спавн-события, поэтому применяем статы при уроне.)
  */
 public final class MobSpawnListener implements Listener {
 
@@ -35,9 +34,9 @@ public final class MobSpawnListener implements Listener {
         this.plugin = plugin;
         kStatsApplied = new NamespacedKey(plugin, "mob_stats_applied");
         kHpMod = new NamespacedKey(plugin, "boss_hp_0");
+        plugin.getLogger().info("[Gear] MobSpawnListener initialized");
     }
 
-    /** Уровень моба из имени ("12 ур." -> 12); null если не наш моб. */
     public static Integer parseLevel(String strippedName) {
         if (strippedName == null) return null;
         Matcher m = LEVEL_PATTERN.matcher(strippedName);
@@ -47,10 +46,9 @@ public final class MobSpawnListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
         Entity victim = event.getEntity();
-        if (!(victim instanceof LivingEntity living)) return;
-
-        // Проверяем только мобов, которых ещё не трогали
-        if (living.getPersistentDataContainer().has(kStatsApplied, PersistentDataType.BYTE)) return;
+        if (!(victim instanceof LivingEntity living)) {
+            return;
+        }
 
         String raw = living.getCustomName();
         if (raw == null) return;
@@ -58,10 +56,21 @@ public final class MobSpawnListener implements Listener {
         String name = ChatColor.stripColor(raw);
         Integer level = parseLevel(name);
         
-        if (level == null) return; // ванильный или чужой моб
+        if (level == null) return;
+
+        // Отладка: пишем в лог каждый раз, когда видим нашего моба
+        plugin.getLogger().info("[Gear] MobSpawnListener triggered for: " + name + " lvl=" + level);
+
+        if (living.getPersistentDataContainer().has(kStatsApplied, PersistentDataType.BYTE)) {
+            plugin.getLogger().info("[Gear] Stats already applied for: " + name);
+            return;
+        }
 
         ConfigurationSection stats = findStats(name);
-        if (stats == null) return;
+        if (stats == null) {
+            plugin.getLogger().info("[Gear] No stats config found for: " + name);
+            return;
+        }
 
         double hp = stats.getDouble("hp", 0.0);
         double damage = stats.getDouble("damage", 0.0);
@@ -83,28 +92,23 @@ public final class MobSpawnListener implements Listener {
         return null;
     }
 
-    /** HP выше 1024: база 1024 + модификатор ADD_NUMBER на остаток. */
     private void applyMaxHealth(LivingEntity entity, double target) {
         AttributeInstance attr = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
         if (attr == null) return;
         
-        // Убираем старые модификаторы (если были)
         attr.getModifiers().stream()
                 .filter(m -> m.getKey().equals(kHpMod))
                 .forEach(attr::removeModifier);
         
-        // Ставим базу максимум 1024 (cap)
         double base = Math.min(1024.0, attr.getBaseValue());
         attr.setBaseValue(base);
         
-        // Добавляем модификатор для оставшихся HP
         double need = target - base;
         if (need > 0.5) {
             attr.addModifier(new AttributeModifier(kHpMod, need,
                     AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.ANY));
         }
         
-        // Ставим текущее HP = целевое (иначе моб появится с 1024 из 35000)
         entity.setHealth(Math.min(target, attr.getValue()));
     }
 
