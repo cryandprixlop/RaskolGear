@@ -16,14 +16,12 @@ import ru.raskol.gear.item.GearFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
 
 /**
- * Дроп с мобов MythicMobs:
- * - фрагменты по тиру (уровню) моба (1-5 штук);
- * - чертежи с боссов (100% шанс).
+ * Дроп с мобов Раскола (имя с "N ур."):
+ * - фрагменты по тиру уровня (1-5 штук);
+ * - с боссов (уровень >= boss-min-level или метка ☠) — 100% чертёж.
  */
 public final class MobDropListener implements Listener {
 
@@ -40,21 +38,24 @@ public final class MobDropListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onMythicMobDeath(EntityDeathEvent event) {
+    public void onMobDeath(EntityDeathEvent event) {
         if (!plugin.getConfig().getBoolean("drops.enabled", true)) return;
 
         LivingEntity victim = event.getEntity();
-        Integer level = mythicLevel(victim);
+        String raw = victim.getCustomName();
+        if (raw == null) return;
+        String name = ChatColor.stripColor(raw);
+
+        Integer level = MobSpawnListener.parseLevel(name);
         if (level == null) return; // ванильный моб — не трогаем
 
         Player killer = victim.getKiller();
 
-        /* ----- боссы: 100% чертёж ----- */
         int bossMin = plugin.getConfig().getInt("drops.boss-min-level", 50);
         String marker = plugin.getConfig().getString("drops.boss-marker", "☠");
-        String name = victim.getCustomName() == null ? "" : ChatColor.stripColor(victim.getCustomName());
-        boolean boss = level >= bossMin || (marker != null && !marker.isEmpty() && name.contains(marker));
-        
+        boolean boss = level >= bossMin
+                || (marker != null && !marker.isEmpty() && name.contains(marker));
+
         if (boss) {
             ItemStack bp = rollBlueprint();
             if (bp != null) {
@@ -67,7 +68,6 @@ public final class MobDropListener implements Listener {
                         + " lvl " + level + " (killer: " + (killer != null ? killer.getName() : "-") + ")");
             }
         } else {
-            /* ----- обычные мобы: фрагменты по тиру (1-5 штук) ----- */
             for (Map<?, ?> tier : plugin.getConfig().getMapList("drops.tiers")) {
                 int min = toInt(tier.get("min-level"), 1);
                 int max = toInt(tier.get("max-level"), 999);
@@ -79,7 +79,7 @@ public final class MobDropListener implements Listener {
                     int minAmount = toInt(tier.get("fragment-min"), 1);
                     int maxAmount = toInt(tier.get("fragment-max"), 5);
                     int amount = minAmount + random.nextInt(maxAmount - minAmount + 1);
-                    
+
                     ItemStack frag = factory.createFragment(fragTier, amount);
                     if (frag != null) {
                         event.getDrops().add(frag);
@@ -88,7 +88,7 @@ public final class MobDropListener implements Listener {
                                     + ") x" + amount + " §8[моб " + level + " ур.]");
                         }
                         plugin.getLogger().info("[Gear] drop fragment: " + fragTier + " x" + amount
-                                + " from " + victim.getName() + " lvl " + level);
+                                + " from " + name + " lvl " + level);
                     }
                 }
                 break;
@@ -107,7 +107,7 @@ public final class MobDropListener implements Listener {
         if ("LEGENDARY".equals(rarity)) {
             List<String> keys = legendaryKeys(weapon ? "weapons" : "armor", cls);
             if (keys.isEmpty()) {
-                rarity = "EPIC"; // нет легендарных сетов у класса — понижаем
+                rarity = "EPIC";
             } else {
                 setKey = keys.get(random.nextInt(keys.size()));
             }
@@ -139,27 +139,6 @@ public final class MobDropListener implements Listener {
                 .getConfigurationSection(kind + "." + cls + ".LEGENDARY");
         return sec == null ? List.of() : new ArrayList<>(sec.getKeys(false));
     }
-
-    /* ========== Уровень моба из MythicMobs (рефлексия) ========== */
-
-    private Integer mythicLevel(LivingEntity entity) {
-        try {
-            Class<?> bukkitClass = Class.forName("io.lumine.mythic.bukkit.MythicBukkit");
-            Object inst = bukkitClass.getMethod("getInstance").invoke(null);
-            Object mobManager = inst.getClass().getMethod("getMobManager").invoke(inst);
-            Object opt = mobManager.getClass()
-                    .getMethod("getActiveMob", UUID.class)
-                    .invoke(mobManager, entity.getUniqueId());
-            if (!(opt instanceof Optional<?> o) || o.isEmpty()) return null;
-            Object activeMob = o.get();
-            Object level = activeMob.getClass().getMethod("getLevel").invoke(activeMob);
-            return level instanceof Number n ? n.intValue() : null;
-        } catch (Throwable t) {
-            return null;
-        }
-    }
-
-    /* ========== Вспомогательные ========== */
 
     private String tierRu(String tier) {
         return switch (tier) {
