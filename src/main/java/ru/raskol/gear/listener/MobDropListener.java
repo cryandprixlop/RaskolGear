@@ -22,8 +22,8 @@ import java.util.UUID;
 
 /**
  * Дроп с мобов MythicMobs:
- * - фрагменты по тиру (уровню) моба;
- * - чертежи с боссов (уровень >= boss-min-level или метка в имени).
+ * - фрагменты по тиру (уровню) моба (1-5 штук);
+ * - чертежи с боссов (100% шанс).
  */
 public final class MobDropListener implements Listener {
 
@@ -49,53 +49,54 @@ public final class MobDropListener implements Listener {
 
         Player killer = victim.getKiller();
 
-        /* ----- фрагменты по тиру ----- */
-        for (Map<?, ?> tier : plugin.getConfig().getMapList("drops.tiers")) {
-            int min = toInt(tier.get("min-level"), 1);
-            int max = toInt(tier.get("max-level"), 999);
-            if (level < min || level > max) continue;
-
-            double chance = toDouble(tier.get("fragment-chance"), 0.0);
-            if (random.nextDouble(100.0) < chance) {
-                String fragTier = String.valueOf(tier.get("fragment"));
-                int amount = Math.max(1, toInt(tier.get("fragment-amount"), 1));
-                ItemStack frag = factory.createFragment(fragTier, amount);
-                if (frag != null) {
-                    event.getDrops().add(frag);
-                    if (killer != null) {
-                        killer.sendMessage("§7⚙ Дроп: фрагмент (" + tierRu(fragTier)
-                                + ") x" + amount + " §8[моб " + level + " ур.]");
-                    }
-                    plugin.getLogger().info("[Gear] drop fragment: " + fragTier + " x" + amount
-                            + " from " + victim.getName() + " lvl " + level);
-                }
-            }
-            break;
-        }
-
-        /* ----- боссы: чертёж ----- */
+        /* ----- боссы: 100% чертёж ----- */
         int bossMin = plugin.getConfig().getInt("drops.boss-min-level", 50);
         String marker = plugin.getConfig().getString("drops.boss-marker", "☠");
         String name = victim.getCustomName() == null ? "" : ChatColor.stripColor(victim.getCustomName());
         boolean boss = level >= bossMin || (marker != null && !marker.isEmpty() && name.contains(marker));
-        if (!boss) return;
+        
+        if (boss) {
+            ItemStack bp = rollBlueprint();
+            if (bp != null) {
+                event.getDrops().add(bp);
+                if (killer != null) {
+                    killer.sendMessage("§6★ Босс выбил чертёж: " + bp.getItemMeta().getDisplayName());
+                    killer.playSound(killer.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                }
+                plugin.getLogger().info("[Gear] drop blueprint from boss " + name
+                        + " lvl " + level + " (killer: " + (killer != null ? killer.getName() : "-") + ")");
+            }
+        } else {
+            /* ----- обычные мобы: фрагменты по тиру (1-5 штук) ----- */
+            for (Map<?, ?> tier : plugin.getConfig().getMapList("drops.tiers")) {
+                int min = toInt(tier.get("min-level"), 1);
+                int max = toInt(tier.get("max-level"), 999);
+                if (level < min || level > max) continue;
 
-        double bpChance = plugin.getConfig().getDouble("drops.bosses.blueprint-chance", 15.0);
-        if (random.nextDouble(100.0) >= bpChance) return;
-
-        ItemStack bp = rollBlueprint();
-        if (bp == null) return;
-        event.getDrops().add(bp);
-
-        if (killer != null) {
-            killer.sendMessage("§6★ Босс выбил чертёж: " + bp.getItemMeta().getDisplayName());
-            killer.playSound(killer.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                double chance = toDouble(tier.get("fragment-chance"), 0.0);
+                if (random.nextDouble(100.0) < chance) {
+                    String fragTier = String.valueOf(tier.get("fragment"));
+                    int minAmount = toInt(tier.get("fragment-min"), 1);
+                    int maxAmount = toInt(tier.get("fragment-max"), 5);
+                    int amount = minAmount + random.nextInt(maxAmount - minAmount + 1);
+                    
+                    ItemStack frag = factory.createFragment(fragTier, amount);
+                    if (frag != null) {
+                        event.getDrops().add(frag);
+                        if (killer != null) {
+                            killer.sendMessage("§7⚙ Дроп: фрагмент (" + tierRu(fragTier)
+                                    + ") x" + amount + " §8[моб " + level + " ур.]");
+                        }
+                        plugin.getLogger().info("[Gear] drop fragment: " + fragTier + " x" + amount
+                                + " from " + victim.getName() + " lvl " + level);
+                    }
+                }
+                break;
+            }
         }
-        plugin.getLogger().info("[Gear] drop blueprint from boss " + name
-                + " lvl " + level + " (killer: " + (killer != null ? killer.getName() : "-") + ")");
     }
 
-    /* ========== Генерация чертежа ========== */
+    /* ========== Генерация чертежа (100% с босса) ========== */
 
     private ItemStack rollBlueprint() {
         String cls = CLASSES[random.nextInt(CLASSES.length)];
