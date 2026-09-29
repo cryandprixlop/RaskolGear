@@ -43,36 +43,40 @@ combat:
 # ===== Дроп с мобов MythicMobs =====
 drops:
   enabled: true
-  boss-min-level: 50        # уровень, с которого моб считается боссом
-  boss-marker: "☠"          # ИЛИ метка в имени моба
+  boss-min-level: 50
+  boss-marker: "☠"
   tiers:
     - min-level: 1
       max-level: 9
       fragment: iron
-      fragment-chance: 25.0
-      fragment-amount: 1
+      fragment-chance: 60.0
+      fragment-min: 1
+      fragment-max: 2
     - min-level: 10
       max-level: 24
       fragment: iron
-      fragment-chance: 45.0
-      fragment-amount: 2
+      fragment-chance: 75.0
+      fragment-min: 2
+      fragment-max: 3
     - min-level: 25
       max-level: 39
       fragment: steel
-      fragment-chance: 35.0
-      fragment-amount: 1
+      fragment-chance: 65.0
+      fragment-min: 1
+      fragment-max: 3
     - min-level: 40
       max-level: 49
       fragment: steel
-      fragment-chance: 55.0
-      fragment-amount: 2
+      fragment-chance: 80.0
+      fragment-min: 2
+      fragment-max: 4
     - min-level: 50
       max-level: 999
       fragment: mithril
-      fragment-chance: 65.0
-      fragment-amount: 1
+      fragment-chance: 100.0
+      fragment-min: 3
+      fragment-max: 5
   bosses:
-    blueprint-chance: 15.0
     blueprint-rarities:
       COMMON: 60.0
       RARE: 25.0
