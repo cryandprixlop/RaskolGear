@@ -8,6 +8,7 @@ import ru.raskol.gear.item.GearFactory;
 import ru.raskol.gear.listener.ArmorDefenseListener;
 import ru.raskol.gear.listener.CraftListener;
 import ru.raskol.gear.listener.MobDropListener;
+import ru.raskol.gear.listener.MobSpawnListener;
 import ru.raskol.gear.listener.WeaponDamageListener;
 
 public final class RaskolGear extends JavaPlugin {
@@ -35,6 +36,8 @@ public final class RaskolGear extends JavaPlugin {
                 new ArmorDefenseListener(this), this);
         getServer().getPluginManager().registerEvents(
                 new MobDropListener(this, gearFactory), this);
+        getServer().getPluginManager().registerEvents(
+                new MobSpawnListener(this), this);
 
         craftListener = new CraftListener(this, gearFactory);
         getServer().getPluginManager().registerEvents(craftListener, this);
@@ -45,9 +48,8 @@ public final class RaskolGear extends JavaPlugin {
 
         getLogger().info("RaskolGear v" + getDescription().getVersion()
                 + " включён. Classes hook: " + (classesHook.isAvailable() ? "да" : "НЕТ")
-                + ". Сетов брони: " + armorSets
-                + ", сетов оружия: " + weaponSets
-                + ", крафт: активен, дроп с MM-мобов: "
+                + ". Сетов: " + armorSets + " брони, " + weaponSets + " оружия"
+                + ". Крафт: активен, дроп: "
                 + (getConfig().getBoolean("drops.enabled", true) ? "активен" : "выключен") + ".");
     }
 
