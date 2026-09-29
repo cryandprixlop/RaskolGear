@@ -5,6 +5,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -15,118 +16,92 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import ru.raskol.gear.RaskolGear;
 
-import java.util.Optional;
-import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Обход ванильного cap 1024 HP для MM-боссов.
- * На спавне босса добавляем AttributeModifier-ы ADD_NUMBER,
- * которые суммируются с базой и дают нужные 35k/45k HP.
+ * Ставит HP и урон мобам Раскола (обход ванильного cap 1024 HP).
+ * Уровень и имя читаются из кастомного имени моба: "… [5 ур.]", "☠ … [BOSS 50 ур.]".
  */
 public final class MobSpawnListener implements Listener {
 
+    private static final Pattern LEVEL_PATTERN = Pattern.compile("(\\d+)\\s*ур");
+
     private final RaskolGear plugin;
-    private final NamespacedKey kBossHpApplied;
+    private final NamespacedKey kStatsApplied;
+    private final NamespacedKey kHpMod;
 
     public MobSpawnListener(RaskolGear plugin) {
         this.plugin = plugin;
-        this.kBossHpApplied = new NamespacedKey(plugin, "boss_hp_applied");
+        kStatsApplied = new NamespacedKey(plugin, "mob_stats_applied");
+        kHpMod = new NamespacedKey(plugin, "boss_hp_0");
+    }
+
+    /** Уровень моба из имени ("12 ур." -> 12); null если не наш моб. */
+    public static Integer parseLevel(String strippedName) {
+        Matcher m = LEVEL_PATTERN.matcher(strippedName);
+        return m.find() ? Integer.parseInt(m.group(1)) : null;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         LivingEntity entity = event.getEntity();
-
-        // Ждём 1 тик — чтобы MM успел установить свои базовые HP
         new BukkitRunnable() {
             @Override
             public void run() {
                 if (!entity.isValid()) return;
-                handleSpawn(entity);
+                handle(entity);
             }
         }.runTask(plugin);
     }
 
-    private void handleSpawn(LivingEntity entity) {
-        Integer level = mythicLevel(entity);
-        if (level == null) return;
+    private void handle(LivingEntity entity) {
+        String raw = entity.getCustomName();
+        if (raw == null) return;
+        String name = ChatColor.stripColor(raw);
+        if (parseLevel(name) == null) return; // ванильный или чужой моб
 
-        String name = entity.getCustomName() == null ? "" : ChatColor.stripColor(entity.getCustomName());
-        String marker = plugin.getConfig().getString("drops.boss-marker", "☠");
-        int bossMinLevel = plugin.getConfig().getInt("drops.boss-min-level", 50);
+        if (entity.getPersistentDataContainer().has(kStatsApplied, PersistentDataType.BYTE)) return;
 
-        boolean boss = level >= bossMinLevel || (marker != null && !marker.isEmpty() && name.contains(marker));
-        if (!boss) return;
+        ConfigurationSection stats = findStats(name);
+        if (stats == null) return;
 
-        double targetHp = findBossTargetHp(name, level);
-        applyBossHp(entity, targetHp);
+        double hp = stats.getDouble("hp", 0.0);
+        double damage = stats.getDouble("damage", 0.0);
+
+        if (hp > 0) applyMaxHealth(entity, hp);
+        if (damage > 0) applyAttackDamage(entity, damage);
+
+        entity.getPersistentDataContainer().set(kStatsApplied, PersistentDataType.BYTE, (byte) 1);
+        plugin.getLogger().info("[Gear] mob stats applied: " + name
+                + " hp=" + hp + " dmg=" + damage);
     }
 
-    private double findBossTargetHp(String name, int level) {
-        var section = plugin.getConfig().getConfigurationSection("drops.boss-health");
-        if (section != null) {
-            for (String key : section.getKeys(false)) {
-                if (name.contains(key)) return section.getDouble(key);
-            }
+    private ConfigurationSection findStats(String name) {
+        ConfigurationSection root = plugin.getConfig().getConfigurationSection("drops.mob-stats");
+        if (root == null) return null;
+        for (String key : root.getKeys(false)) {
+            if (name.contains(key)) return root.getConfigurationSection(key);
         }
-        // Дефолт по уровню
-        return level >= 60 ? 45000.0 : 35000.0;
+        return null;
     }
 
-    private void applyBossHp(LivingEntity entity, double targetHp) {
-        // Защита от повторного применения
-        if (entity.getPersistentDataContainer().has(kBossHpApplied, PersistentDataType.BYTE)) return;
-
+    /** HP выше 1024: база 1024 + модификатор ADD_NUMBER на остаток. */
+    private void applyMaxHealth(LivingEntity entity, double target) {
         AttributeInstance attr = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
         if (attr == null) return;
-
-        double base = attr.getBaseValue(); // MM ставит максимум 1024
-        double need = targetHp - base;
-        if (need <= 0) return;
-
-        // Разбиваем на модификаторы по 10000 каждый (ADD_NUMBER обходит cap)
-        double perMod = 10000.0;
-        int count = (int) Math.ceil(need / perMod);
-        double each = need / count;
-
-        // Снимаем все старые модификаторы с нашим префиксом (если были)
-        attr.getModifiers().stream()
-                .filter(m -> m.getKey().getNamespace().equals(plugin.getName().toLowerCase())
-                        && m.getKey().getKey().startsWith("boss_hp_"))
-                .forEach(attr::removeModifier);
-
-        for (int i = 0; i < count; i++) {
-            AttributeModifier mod = new AttributeModifier(
-                    new NamespacedKey(plugin, "boss_hp_" + i),
-                    each,
-                    AttributeModifier.Operation.ADD_NUMBER,
-                    EquipmentSlotGroup.ANY);
-            attr.addModifier(mod);
+        attr.setBaseValue(Math.min(attr.getBaseValue(), 1024.0));
+        double need = target - attr.getValue();
+        if (need > 0.5) {
+            attr.addModifier(new AttributeModifier(kHpMod, need,
+                    AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.ANY));
         }
-
-        // Ставим текущее HP = целевое (иначе моб появится с 1024 из 35000)
-        entity.setHealth(targetHp);
-
-        entity.getPersistentDataContainer().set(kBossHpApplied, PersistentDataType.BYTE, (byte) 1);
-
-        plugin.getLogger().info("[Gear] boss HP boosted: " + entity.getName()
-                + " (base=" + base + ") -> " + targetHp + " via " + count + " modifiers");
+        entity.setHealth(target);
     }
 
-    private Integer mythicLevel(LivingEntity entity) {
-        try {
-            Class<?> bukkitClass = Class.forName("io.lumine.mythic.bukkit.MythicBukkit");
-            Object inst = bukkitClass.getMethod("getInstance").invoke(null);
-            Object mobManager = inst.getClass().getMethod("getMobManager").invoke(inst);
-            Object opt = mobManager.getClass()
-                    .getMethod("getActiveMob", UUID.class)
-                    .invoke(mobManager, entity.getUniqueId());
-            if (!(opt instanceof Optional<?> o) || o.isEmpty()) return null;
-            Object activeMob = o.get();
-            Object level = activeMob.getClass().getMethod("getLevel").invoke(activeMob);
-            return level instanceof Number n ? n.intValue() : null;
-        } catch (Throwable t) {
-            return null;
-        }
+    private void applyAttackDamage(LivingEntity entity, double target) {
+        AttributeInstance attr = entity.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE);
+        if (attr == null) return;
+        attr.setBaseValue(Math.min(target, 2048.0));
     }
 }
