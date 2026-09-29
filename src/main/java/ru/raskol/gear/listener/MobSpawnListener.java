@@ -6,11 +6,12 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -39,18 +40,21 @@ public final class MobSpawnListener implements Listener {
 
     /** Уровень моба из имени ("12 ур." -> 12); null если не наш моб. */
     public static Integer parseLevel(String strippedName) {
+        if (strippedName == null) return null;
         Matcher m = LEVEL_PATTERN.matcher(strippedName);
         return m.find() ? Integer.parseInt(m.group(1)) : null;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onCreatureSpawn(CreatureSpawnEvent event) {
-        LivingEntity entity = event.getEntity();
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onEntitySpawn(EntitySpawnEvent event) {
+        Entity entity = event.getEntity();
+        if (!(entity instanceof LivingEntity)) return;
+
         new BukkitRunnable() {
             @Override
             public void run() {
                 if (!entity.isValid()) return;
-                handle(entity);
+                handle((LivingEntity) entity);
             }
         }.runTask(plugin);
     }
@@ -58,8 +62,11 @@ public final class MobSpawnListener implements Listener {
     private void handle(LivingEntity entity) {
         String raw = entity.getCustomName();
         if (raw == null) return;
+        
         String name = ChatColor.stripColor(raw);
-        if (parseLevel(name) == null) return; // ванильный или чужой моб
+        Integer level = parseLevel(name);
+        
+        if (level == null) return; // ванильный или чужой моб
 
         if (entity.getPersistentDataContainer().has(kStatsApplied, PersistentDataType.BYTE)) return;
 
@@ -90,13 +97,25 @@ public final class MobSpawnListener implements Listener {
     private void applyMaxHealth(LivingEntity entity, double target) {
         AttributeInstance attr = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
         if (attr == null) return;
-        attr.setBaseValue(Math.min(attr.getBaseValue(), 1024.0));
-        double need = target - attr.getValue();
+        
+        // Убираем старые модификаторы (если были)
+        attr.getModifiers().stream()
+                .filter(m -> m.getKey().equals(kHpMod))
+                .forEach(attr::removeModifier);
+        
+        // Ставим базу максимум 1024 (cap)
+        double base = Math.min(1024.0, attr.getBaseValue());
+        attr.setBaseValue(base);
+        
+        // Добавляем модификатор для оставшихся HP
+        double need = target - base;
         if (need > 0.5) {
             attr.addModifier(new AttributeModifier(kHpMod, need,
                     AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.ANY));
         }
-        entity.setHealth(target);
+        
+        // Ставим текущее HP = целевое
+        entity.setHealth(Math.min(target, attr.getValue()));
     }
 
     private void applyAttackDamage(LivingEntity entity, double target) {
