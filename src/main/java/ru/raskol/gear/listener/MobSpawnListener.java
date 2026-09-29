@@ -4,7 +4,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -12,7 +11,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.persistence.PersistentDataType;
 import ru.raskol.gear.RaskolGear;
 
@@ -20,7 +18,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Ставит HP и урон мобам Раскола при первом ударе по ним.
+ * Ставит виртуальное HP в PDC (обход ванильного cap 1024).
+ * Применяется при первом ударе по мобу.
  */
 public final class MobSpawnListener implements Listener {
 
@@ -28,11 +27,14 @@ public final class MobSpawnListener implements Listener {
 
     private final RaskolGear plugin;
     private final NamespacedKey kStatsApplied;
+    private final NamespacedKey kRealHp;
+    private final NamespacedKey kBaseName;
 
     public MobSpawnListener(RaskolGear plugin) {
         this.plugin = plugin;
         kStatsApplied = new NamespacedKey(plugin, "mob_stats_applied");
-        plugin.getLogger().info("[Gear] MobSpawnListener initialized");
+        kRealHp = new NamespacedKey(plugin, "real_hp");
+        kBaseName = new NamespacedKey(plugin, "base_name");
     }
 
     public static Integer parseLevel(String strippedName) {
@@ -44,21 +46,16 @@ public final class MobSpawnListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
         Entity victim = event.getEntity();
-        if (!(victim instanceof LivingEntity living)) {
-            return;
-        }
+        if (!(victim instanceof LivingEntity living)) return;
 
         String raw = living.getCustomName();
         if (raw == null) return;
         
         String name = ChatColor.stripColor(raw);
         Integer level = parseLevel(name);
-        
         if (level == null) return;
 
-        if (living.getPersistentDataContainer().has(kStatsApplied, PersistentDataType.BYTE)) {
-            return;
-        }
+        if (living.getPersistentDataContainer().has(kStatsApplied, PersistentDataType.BYTE)) return;
 
         ConfigurationSection stats = findStats(name);
         if (stats == null) {
@@ -69,12 +66,22 @@ public final class MobSpawnListener implements Listener {
         double hp = stats.getDouble("hp", 0.0);
         double damage = stats.getDouble("damage", 0.0);
 
-        if (hp > 0) applyMaxHealth(living, hp);
-        if (damage > 0) applyAttackDamage(living, damage);
+        // Виртуальное HP в PDC (обход cap 1024)
+        if (hp > 0) {
+            living.getPersistentDataContainer().set(kRealHp, PersistentDataType.DOUBLE, hp);
+            living.getPersistentDataContainer().set(kBaseName, PersistentDataType.STRING, name);
+            plugin.getLogger().info("[Gear] boss virtual HP set: " + name + " -> " + hp);
+        }
+        
+        // Урон через атрибут (на него cap 2048, но нам хватает)
+        if (damage > 0) {
+            AttributeInstance attr = living.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE);
+            if (attr != null) {
+                attr.setBaseValue(Math.min(damage, 2048.0));
+            }
+        }
 
         living.getPersistentDataContainer().set(kStatsApplied, PersistentDataType.BYTE, (byte) 1);
-        plugin.getLogger().info("[Gear] mob stats applied on first hit: " + name
-                + " hp=" + hp + " dmg=" + damage);
     }
 
     private ConfigurationSection findStats(String name) {
@@ -84,50 +91,5 @@ public final class MobSpawnListener implements Listener {
             if (name.contains(key)) return root.getConfigurationSection(key);
         }
         return null;
-    }
-
-    /** HP выше 1024: база 1024 + множественные модификаторы ADD_NUMBER. */
-    private void applyMaxHealth(LivingEntity entity, double target) {
-        AttributeInstance attr = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-        if (attr == null) return;
-        
-        // Убираем все наши старые модификаторы
-        attr.getModifiers().stream()
-                .filter(m -> m.getKey().getNamespace().equals(plugin.getName().toLowerCase()))
-                .forEach(attr::removeModifier);
-        
-        // База = 1024 (ванильный cap)
-        double base = Math.min(1024.0, attr.getBaseValue());
-        attr.setBaseValue(base);
-        
-        // Добавляем множественные модификаторы по 8000 HP каждый
-        double need = target - base;
-        int count = (int) Math.ceil(need / 8000.0);
-        double each = need / count;
-        
-        for (int i = 0; i < count; i++) {
-            NamespacedKey key = new NamespacedKey(plugin, "boss_hp_" + i);
-            attr.addModifier(new AttributeModifier(key, each,
-                    AttributeModifier.Operation.ADD_NUMBER, EquipmentSlotGroup.ANY));
-        }
-        
-        // Отладка: показываем реальное значение атрибута
-        plugin.getLogger().info("[Gear] HP debug for " + entity.getName() 
-                + ": base=" + attr.getBaseValue() 
-                + ", value=" + attr.getValue() 
-                + ", modifiers=" + count);
-        
-        // Ставим текущее HP = целевое
-        double maxHp = attr.getValue();
-        entity.setHealth(Math.min(target, maxHp));
-        
-        plugin.getLogger().info("[Gear] Current HP after setHealth: " + entity.getHealth());
-    }
-
-    private void applyAttackDamage(LivingEntity entity, double target) {
-        AttributeInstance attr = entity.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE);
-        if (attr == null) return;
-        attr.setBaseValue(Math.min(target, 2048.0));
-        plugin.getLogger().info("[Gear] Damage applied: " + target + " (base=" + attr.getBaseValue() + ")");
     }
 }
