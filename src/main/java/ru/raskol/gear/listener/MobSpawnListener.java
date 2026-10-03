@@ -8,6 +8,7 @@ import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -21,9 +22,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Ставит HP и урон мобам Раскола при первом ударе по ним.
- * HP ≤ 1024: через setBaseValue. HP > 1024: база 1024 + модификаторы.
- * Плюс: наши мобы (имя с "N ур.") никогда не горят.
+ * Мобы Раскола:
+ * - HP и урон из drops.mob-stats применяются при первом ударе (HP)
+ *   и в каждом ударе моба по цели (урон — принудительно в событие);
+ * - наши мобы (имя с "N ур.") не горят.
  */
 public final class MobSpawnListener implements Listener {
 
@@ -45,7 +47,7 @@ public final class MobSpawnListener implements Listener {
         return m.find() ? Integer.parseInt(m.group(1)) : null;
     }
 
-    /* ========== Наши мобы не горят (солнце, огонь) ========== */
+    /* ========== Наши мобы не горят ========== */
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCombust(EntityCombustEvent event) {
@@ -57,7 +59,31 @@ public final class MobSpawnListener implements Listener {
         }
     }
 
-    /* ========== Статы при первом ударе ========== */
+    /* ========== УРОН моба: принудительно из конфига (HIGH — до резистов брони) ========== */
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onMobAttack(EntityDamageByEntityEvent event) {
+        LivingEntity attacker = resolveAttacker(event);
+        if (attacker == null) return;
+
+        String raw = attacker.getCustomName();
+        if (raw == null) return;
+        String name = ChatColor.stripColor(raw);
+        if (parseLevel(name) == null) return;
+
+        ConfigurationSection stats = findStats(name);
+        if (stats == null) return;
+
+        double dmg = stats.getDouble("damage", 0.0);
+        if (dmg <= 0) return;
+
+        event.setDamage(dmg);
+        if (plugin.getConfig().getBoolean("combat.debug", false)) {
+            plugin.getLogger().info("[Gear] mob damage override: " + name + " -> " + dmg);
+        }
+    }
+
+    /* ========== Статы (HP) при первом ударе ========== */
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
@@ -87,6 +113,14 @@ public final class MobSpawnListener implements Listener {
 
         living.getPersistentDataContainer().set(kStatsApplied, PersistentDataType.BYTE, (byte) 1);
         plugin.getLogger().info("[Gear] mob stats applied: " + name + " hp=" + hp + " dmg=" + damage);
+    }
+
+    /* ========== Вспомогательные ========== */
+
+    private LivingEntity resolveAttacker(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof LivingEntity le) return le;
+        if (event.getDamager() instanceof Projectile pr && pr.getShooter() instanceof LivingEntity le) return le;
+        return null;
     }
 
     private ConfigurationSection findStats(String name) {
